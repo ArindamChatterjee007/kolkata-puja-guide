@@ -2,7 +2,7 @@
 
 Review date: 2026-10-15 IST. UTC execution timestamps are on 2026-10-14. Current office snapshot authored with `new Date().toISOString()`: `2026-10-14T23:36:28.554Z`.
 
-**Decision: First public release checkpoint verified, including the visible office and offline pages.** The board now records the observed first artifact/run, not an invented future publication. R1-R4 remain resolved in the local regression record. This pass changes release metadata and documentation only, with no planner/application changes, model fallback, subagents or account-permission changes. Historical pending states, HOLDs, reproductions and fingerprints below are history, not current blockers or current-build fingerprints.
+**Decision: Public release checkpoint and its metadata publication verified, including the visible office and offline pages.** The board records the observed first artifact/run; the subsequent successful metadata publication is recorded below. R1-R4 remain resolved in the local regression record. This pass changes release metadata and documentation only, with no planner/application changes, model fallback, subagents or account-permission changes. Historical pending states, HOLDs, reproductions and fingerprints below are history, not current blockers or current-build fingerprints.
 
 ## Deployment Recovery
 
@@ -76,6 +76,29 @@ The first substantive checkpoint patch was immediately followed by `npm run test
 | `git diff --check` and editor diagnostics | PASS; no errors in the four edited files | After the checkpoint patch |
 
 The fresh machine receipts are ignored `test-results/public-final/validation.json` and `unit.json`, plus the generated office report. These executions do not replace the timestamp of the earlier full suite retained in the board. Only [README.md](../README.md), [OFFICE.md](OFFICE.md), this report and [board.json](../public/office/board.json) changed. The public-only source inventory remains 72 files; planner E2E was not rerun and its recorded 23 passes remain historical.
+
+### Metadata Publication
+
+The release-record source and artifact were committed and pushed normally to their existing branches, without amendments or force pushes. Root, public remote, local GitHub noreply identity, remote heads and explicit staging paths were verified. The existing owned `gh-pages` branch was attached at `559dbda813354f57043ed4a76d0a7c87b87909a8`; its tracked artifact matched the prior audit before copying the reviewed build. Only `office/board.json` and `sw.js` changed. No obsolete hashed asset needed removal, `.nojekyll` remained empty, and all other artifact bytes were unchanged. No Pages settings or authentication scopes were changed; the workflow example remains inactive.
+
+| Evidence | Actual verified value |
+| --- | --- |
+| Release-record build source on `main` | `aff751ab6501b8ed278143ed5811c1b8472b4479` |
+| Metadata artifact on `gh-pages` | `4a4969c1ca9492cb98d74b6258e0cba8b4a78107` |
+| Built-in Pages run | [38655925441](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/38655925441), `completed` / `success` |
+| Run completed | `2026-10-14T23:44:55.000Z` (October 15, 05:14:55 IST) |
+| Actual jobs | `build`, `report-build-status`, `deploy`: all successful; deploy job completed `23:44:54Z` |
+| Environment deployment | `7079996297`, `github-pages`, `success`, matching the metadata artifact and exact public Pages URL |
+| Configuration and counts | Unchanged `legacy` / `gh-pages` / `/`; 72 source files, 63 artifact files including empty `.nojekyll` |
+| Scoped document/artifact preflight | 157 local documentation links passed; only board/worker artifact hashes changed; `2026-10-14T23:42:45.025Z` |
+
+The exact artifact's commit checks and Actions API identified the real built-in run after a CLI display-name filter returned no match. `gh run watch 38655925441 --repo ArindamChatterjee007/kolkata-puja-guide --exit-status` ran synchronously and confirmed the already completed success. No guessed run, deployment retry, manual polling loop or settings change was used.
+
+Post-publication checks ran **`2026-10-14T23:48:03.734Z` to `23:48:23.927Z`**. Fresh public board, worker and root-index requests with the public cache-buster `release-check=4a4969c1` returned HTTP 200 and matched the audited build hashes. In a new visible Chrome context, the office fetched the exact deployed board, showed 11 tasks, and exposed the actual Pages/repository/commit/run links to the **first verified release checkpoint**. Search, combined filters and Board/List worked. The planner loaded real 256-pixel OSM tiles, retained four stops after Optimize, and passed EN/BN controls with no page overflow. The new worker served the updated deployed office checkpoint offline. There were zero uncaught page errors, office console errors or online HTTP errors.
+
+Actual desktop and mobile captures are 1440x900 and 390x844. The desktop map had 20 visible decoded tiles. Fresh fixed-size mobile captures replace the earlier resize-transition captures as visual evidence: the planner check at `23:50:22.882Z` to `23:50:25.438Z` had six decoded/HTTP-200 OSM tiles, a settled 390x337.59375 map, no loading indicator before or after capture, and no page errors. The office check at `23:51:41.049Z` to `23:51:43.732Z` had one header, 11 tasks, visible-document state, no page-width overflow and no page errors. The deployed office evidence links, fixed-size mobile office and settled mobile planner screenshots were visually inspected. These are capture corrections, not application-code changes or a new planner E2E suite.
+
+The local ignored receipts are `test-results/public-final/deployment.json`, `post-deploy-live.json`, `post-deploy-mobile.json` and `post-deploy-office-mobile.json`, alongside the original PNGs. No test output was uploaded. This final receipt is a **source-only documentation update**: it leaves the built source, metadata artifact and board's first release checkpoint identified above unchanged, and requires no third artifact deployment. Existing untracked legacy assets remain untouched and excluded; a clean tracked worktree must not be described as having no untracked files.
 
 ## Pre-Public-Check Verification
 
