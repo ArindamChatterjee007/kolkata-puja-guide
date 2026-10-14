@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "project": "PujaPath",
+  "snapshotAt": "2026-10-14T22:44:26.167Z",
+  "publication": "pending",
+  "release": null,
+  "roles": [
+    { "id": "product", "name": "Product", "requestedModel": "Claude Fable 5.1", "assignment": "requested", "runtime": "unverified" },
+    { "id": "design", "name": "Design", "requestedModel": "Claude Fable 5.1", "assignment": "requested", "runtime": "unverified" },
+    { "id": "architecture", "name": "Architecture", "requestedModel": "GPT-6 Astra", "assignment": "requested", "runtime": "unverified" },
+    { "id": "routing", "name": "Routing", "requestedModel": "GPT-6 Astra", "assignment": "requested", "runtime": "unverified" },
+    { "id": "data", "name": "Data", "requestedModel": "GPT-6 Astra", "assignment": "requested", "runtime": "unverified" },
+    { "id": "platform", "name": "Platform", "requestedModel": "GPT-6 Astra", "assignment": "requested", "runtime": "unverified" },
+    { "id": "qa", "name": "QA", "requestedModel": "GPT-6 Astra", "assignment": "requested", "runtime": "unverified" },
+    { "id": "release", "name": "Release", "requestedModel": "GPT-6 Astra", "assignment": "requested", "runtime": "unverified" }
+  ],
+  "tasks": [
+    { "id": "architecture-report", "title": "Architecture report", "role": "architecture", "status": "verified", "summary": "Architecture review completed: routing, storage boundaries, foreground location consent and separate offline shells have recorded local evidence. This is not a live-service or exact-runtime certification.", "evidence": [{ "label": "Review and limitations", "path": "docs/RELEASE_CHECKS.md" }] },
+    { "id": "design-report", "title": "Design report", "role": "design", "status": "verified", "summary": "Design review completed with desktop/mobile layout and automated accessibility evidence. EN/BN language targets are at least 44 by 44 pixels at 320 pixels. Native Bengali and real-device acceptance remain unverified.", "evidence": [{ "label": "Design verification", "path": "docs/RELEASE_CHECKS.md" }] },
+    { "id": "domain-routing", "title": "Routing and travel domain", "role": "routing", "status": "verified", "summary": "Current unit and recorded planner checks cover walking, static Metro and road estimates, queue/budget totals and explicit re-optimization. These are approximate plans, not live transit or globally shortest street routes.", "evidence": [{ "label": "Routing tests", "path": "tests/unit/route.test.ts" }, { "label": "Travel tests", "path": "tests/unit/travel.test.ts" }, { "label": "Estimate tests", "path": "tests/unit/estimates.test.ts" }] },
+    { "id": "local-storage", "title": "Local storage and check-ins", "role": "architecture", "status": "verified", "summary": "Current checks cover persistence, manual visits, foreground synthetic check-ins, report expiry and shared-budget bounds. Report add/change/clear/expiry invalidates estimates without silently reordering the route. Real OS/GPS behavior remains unverified.", "evidence": [{ "label": "Storage tests", "path": "tests/unit/storage.test.ts" }, { "label": "Check-in tests", "path": "tests/unit/checkin.test.ts" }, { "label": "Snapshot freshness tests", "path": "tests/unit/ui-state.test.ts" }] },
+    { "id": "source-catalogue", "title": "Source-backed candidate catalogue", "role": "data", "status": "verified", "summary": "6 catalogue tests passed in the current full suite: 33/33 sourced entries, 24 metro nodes, 8 starts and 4 routes. Not a current 2026 festival timetable.", "evidence": [{ "label": "Catalogue tests", "path": "tests/unit/catalogue.test.ts" }, { "label": "Sources and limitations", "path": "docs/DATA_SOURCES.md" }] },
+    { "id": "planner-interface", "title": "Planner interface", "role": "design", "status": "verified", "summary": "Bilingual planner, search, route editing, sharing, report freshness, privacy copy and tile fallback have 23 passing recorded E2E checks. GPS and tiles are controlled fixtures; earlier real-OSM evidence is explicitly historical.", "evidence": [{ "label": "Planner features", "path": "README.md" }, { "label": "Regression receipt", "path": "docs/RELEASE_CHECKS.md" }] },
+    { "id": "office-dashboard", "title": "Public project office", "role": "platform", "status": "verified", "summary": "57 office schema/config tests and 10 isolated production browser checks passed locally, including release-evidence validation, injection, filters, keyboard and automated accessibility at 1440, 390 and 320 pixels. Deployment fixtures are not real publication evidence.", "evidence": [{ "label": "Office tests", "path": "tests/unit/office.test.ts" }, { "label": "Recorded local verification", "path": "docs/OFFICE.md" }] },
+    { "id": "offline-pages", "title": "Offline shell and Pages build", "role": "platform", "status": "verified", "summary": "Full production build and local project-prefix checks pass: separate office navigation, bundled-asset precache and waiting worker updates without takeover. No map-tile cache or prefetch is configured. First online use is required; public Pages checks are pending.", "evidence": [{ "label": "Offline configuration tests", "path": "tests/unit/office.test.ts" }, { "label": "Release checks and limits", "path": "docs/OFFICE.md" }] },
+    { "id": "production-build", "title": "Production build", "role": "platform", "status": "verified", "summary": "The earlier typecheck blockers are resolved by the owning workstreams. npm run build now passes TypeScript and Vite locally on Node 25.5.0. Node 24 deployment CI has not run in this pass.", "evidence": [{ "label": "Current build verification", "path": "docs/RELEASE_CHECKS.md" }] },
+    { "id": "integrated-quality", "title": "End-to-end, accessibility and security review", "role": "qa", "status": "verified", "summary": "151 unit tests in 8 files, 23 recorded planner E2E tests and 10 local office browser checks pass. R1-R4 are resolved; 6 lint warnings remain non-blocking. Scoped automated checks do not certify native Bengali, real OS/GPS, iOS or live crowd data.", "evidence": [{ "label": "Executed gates and limits", "path": "docs/RELEASE_CHECKS.md" }] },
+    { "id": "public-release", "title": "Repository publication and Pages release", "role": "release", "status": "review", "summary": "Local gates passed; publication pending. The parent controls the approved public repository and deployment. No real commit, successful Actions run or live Pages verification is recorded; release remains null.", "evidence": [{ "label": "Deployment evidence procedure", "path": "docs/OFFICE.md" }, { "label": "Publication boundary", "path": "docs/RELEASE_CHECKS.md" }] }
+  ],
+  "suiteReports": [
+    { "id": "domain", "label": "Domain", "passed": 22, "provenance": "handoff" },
+    { "id": "storage", "label": "Storage", "passed": 44, "provenance": "handoff" },
+    { "id": "data", "label": "Data", "passed": 6, "provenance": "handoff" }
+  ],
+  "fullSuite": { "passed": 151, "files": 8, "checkedAt": "2026-10-14T22:41:55.675Z" },
+  "coverage": { "entries": 33, "sourced": 33, "metroNodes": 24, "starts": 8, "routes": 4, "currentTimetable": false }
+}

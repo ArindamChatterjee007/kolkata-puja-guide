@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#bc2f32" />
+    <meta name="description" content="PujaPath public engineering task register and release evidence." />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" type="image/png" href="./icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <title>PujaPath | Project Office</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#task-register">Skip to task register</a>
+    <div id="office-root">
+      <header class="office-header">
+        <a class="brand" href="./" aria-label="PujaPath planner">
+          <img src="./icons/icon-192.png" width="44" height="44" alt="" />
+          <span><strong>PujaPath</strong><span class="brand-subtitle">Project office</span></span>
+        </a>
+        <nav aria-label="Project navigation">
+          <span class="publication-state" id="publication-state">Publication not loaded</span>
+          <a class="planner-link" href="./">Planner <span data-icon="arrow" aria-hidden="true"></span></a>
+        </nav>
+      </header>
+
+      <main class="office-main">
+        <section class="register-heading" aria-labelledby="register-title">
+          <div>
+            <p class="eyebrow">Engineering record</p>
+            <h1 id="register-title">Task register</h1>
+          </div>
+          <div class="snapshot-meta">
+            <p id="snapshot-time">Snapshot not loaded</p>
+            <p><span id="source-state">Awaiting snapshot</span><span class="meta-divider" aria-hidden="true"> / </span><span id="checked-time">Not checked</span></p>
+          </div>
+        </section>
+
+        <section class="stats-band" aria-label="Task counts" id="task-stats"></section>
+
+        <div class="work-layout">
+          <section class="work-area" id="task-register" tabindex="-1" aria-labelledby="work-title">
+            <div class="section-heading">
+              <h2 id="work-title">Work</h2>
+              <span id="result-count" class="result-count" aria-live="polite">Loading snapshot</span>
+            </div>
+            <div class="work-toolbar">
+              <label class="search-control">
+                <span class="visually-hidden">Search tasks</span>
+                <span data-icon="search" aria-hidden="true"></span>
+                <input id="task-search" type="search" placeholder="Search tasks" maxlength="160" autocomplete="off" />
+              </label>
+              <label class="select-control">
+                <span class="visually-hidden">Filter by status</span>
+                <select id="status-filter">
+                  <option value="all">All statuses</option>
+                  <option value="backlog">Backlog</option>
+                  <option value="in-progress">In progress</option>
+                  <option value="review">Review</option>
+                  <option value="verified">Verified</option>
+                  <option value="blocked">Blocked</option>
+                </select>
+              </label>
+              <label class="select-control">
+                <span class="visually-hidden">Filter by role</span>
+                <select id="role-filter"><option value="all">All roles</option></select>
+              </label>
+              <div class="view-controls" role="group" aria-label="Task view">
+                <button type="button" id="list-view" aria-pressed="false" title="List view"><span data-icon="list" aria-hidden="true"></span><span>List</span></button>
+                <button type="button" id="board-view" aria-pressed="true" title="Board view"><span data-icon="board" aria-hidden="true"></span><span>Board</span></button>
+              </div>
+              <button type="button" class="icon-button" id="refresh-board" aria-label="Refresh snapshot" title="Refresh snapshot"><span data-icon="refresh" aria-hidden="true"></span></button>
+            </div>
+            <p class="refresh-error" id="refresh-error" role="status" hidden></p>
+            <div id="tasks" class="tasks-region" aria-busy="true"><p class="empty-state">Loading project snapshot.</p></div>
+          </section>
+
+          <aside class="office-sidebar" aria-label="Project evidence and assignments">
+            <section class="sidebar-section" aria-labelledby="assignments-title">
+              <h2 id="assignments-title">Assignments</h2>
+              <p class="section-note">Requested models. Provider runtime metadata unverified.</p>
+              <ul id="role-roster" class="role-roster"></ul>
+            </section>
+            <section class="sidebar-section" aria-labelledby="evidence-title">
+              <h2 id="evidence-title">Test evidence</h2>
+              <p class="section-note">Per-suite handoff results</p>
+              <ul id="suite-reports" class="suite-reports"></ul>
+              <p id="full-suite" class="section-note">Fresh full-suite run pending.</p>
+              <p id="quality-state" class="section-note">Quality record not loaded.</p>
+            </section>
+            <section class="sidebar-section" aria-labelledby="coverage-title">
+              <h2 id="coverage-title">Candidate coverage</h2>
+              <dl id="catalogue-coverage" class="coverage-list"></dl>
+              <p class="section-note">Not a verified current 2026 festival timetable.</p>
+            </section>
+          </aside>
+        </div>
+      </main>
+      <footer class="office-footer"><span>Public project engineering only</span><span id="publication-evidence">Release evidence not loaded</span></footer>
+    </div>
+    <noscript><p class="noscript-note">JavaScript is required for the task register. The build snapshot is available as <a href="./office/board.json">board.json</a>.</p></noscript>
+    <script type="module" src="/src/office.ts"></script>
+  </body>
+</html>
