@@ -1,6 +1,6 @@
 # PujaPath
 
-A Kolkata Puja planning application with a separate public engineering office. **Hosted on GitHub Pages; office publication sign-off pending.** [Open PujaPath](https://arindamchatterjee007.github.io/kolkata-puja-guide/). The built-in deployment succeeded at `2026-10-14T23:23:08.000Z`; public static-file checks passed afterward. See [the release record](docs/RELEASE_CHECKS.md#verified-deployment) for the actual commits, run, timestamps and remaining limits.
+A Kolkata Puja planning application with a separate public engineering office. **Public release checkpoint verified.** [Open PujaPath](https://arindamchatterjee007.github.io/kolkata-puja-guide/) or [the office](https://arindamchatterjee007.github.io/kolkata-puja-guide/office.html). The first built-in deployment succeeded at `2026-10-14T23:23:08.000Z`; public planner, visible office and offline checks passed through `23:35:57.890Z`. See [the release record](docs/RELEASE_CHECKS.md#live-release-checkpoint) for actual evidence and remaining limits. The office records that verified release checkpoint, not a self-referential artifact hash.
 
 ## Planner Features
 
@@ -23,7 +23,7 @@ npm run dev -- --host 127.0.0.1
 
 Open the URL Vite prints for the planner, or append `office.html` for the task register. For the generated production build, use `npm run preview -- --host 127.0.0.1`. Service workers are generated for production, not the development server. A first online visit is required before offline use.
 
-`npm run test:unit` covers the domain, storage, catalogue, UI state and public-office schema/configuration. The current local record has 151 passing tests in 8 files, including 57 office tests, plus 10 production office browser checks. The saved planner E2E receipt has 23 passes with mocked GPS and controlled tiles; it was not rerun by the release-record pass. TypeScript/Vite build passes; lint exits zero with six warnings. Native-language, real-device and public deployment checks are separate limits, not implied by these counts. Local execution used Node 25.5.0; Node 24 CI remains pending.
+`npm run test:unit` covers the domain, storage, catalogue, UI state and public-office schema/configuration. The local record has 151 passing tests in 8 files, including 57 office tests, plus 10 production office browser checks. The saved planner E2E receipt has 23 passes with mocked GPS and controlled tiles; it was not rerun by the release-record pass. TypeScript/Vite build passes; recorded lint exits zero with six warnings. Public deployment and live-browser evidence are recorded separately from these counts. Native-language and real-device acceptance remain unverified. Local execution used Node 25.5.0; Node 24 source-build CI has not run.
 
 ## Implementation
 
@@ -74,18 +74,18 @@ test "$(git remote get-url origin)" = "https://github.com/ArindamChatterjee007/k
 test "$(git remote get-url --push origin)" = "https://github.com/ArindamChatterjee007/kolkata-puja-guide.git"
 ```
 
-Stop on any mismatch or unexpected remote history. Stage explicit reviewed paths only, including deletions. The source branch must contain no active workflow files. Amending the initial commit is permitted only while that exact commit is unpublished and the remote has no refs; never force-push or replace another contributor's work.
+Stop on any mismatch or unexpected remote history. Stage explicit reviewed paths only, including deletions. The source branch must contain no active workflow files. Both branches now have published history: use normal new commits, never amend that history, force-push or replace another contributor's work.
 
 ### Branch Publishing
 
 1. Run `npm run test:unit`, `npm run build` and `npm run test:office`. Retain fresh timestamps; earlier planner E2E results are not a new execution.
 2. Review the generated artifact against the explicit static-file allowlist, including [FONT_LICENSES.md](public/FONT_LICENSES.md). Reject symlinks, source maps, environment files, private files and test output.
-3. For the initial release, create a new orphan `gh-pages` worktree under ignored `.private/pages-publish`. Keep the main checkout on `main`. Copy only verified generated files from `dist`, add an empty `.nojekyll`, stage each approved artifact path explicitly, commit and push normally. Never copy source or parent files, reuse an unrelated worktree, or overwrite an existing remote branch.
-4. In this repository's Pages settings, choose **Deploy from a branch**, **gh-pages**, **/(root)**. The equivalent repository Pages API source is `{ "branch": "gh-pages", "path": "/" }` with `build_type: "legacy"`. `.nojekyll` disables Jekyll processing of the prebuilt site.
+3. For subsequent releases, attach the existing owned `gh-pages` branch at its verified remote head in ignored `.private/pages-publish`; do not create another orphan history. Keep the main checkout on `main`. Verify the tracked artifact allowlist, copy only reviewed generated files from `dist`, remove only obsolete owned tracked artifact paths, and preserve the empty `.nojekyll`. Stage every added/changed/deleted artifact path explicitly, then commit and push normally. Never copy source or parent files or reuse an unrelated worktree.
+4. Verify the existing Pages configuration read-only: **Deploy from a branch**, **gh-pages**, **/(root)**, with API source `{ "branch": "gh-pages", "path": "/" }` and `build_type: "legacy"`. It is already configured; no settings toggle or authentication-scope change is needed. `.nojekyll` disables Jekyll processing of the prebuilt site.
 5. Record the real source SHA, published `gh-pages` SHA and GitHub-provided Pages run. Watch that exact run to completion with `gh run watch RUN_ID --repo ArindamChatterjee007/kolkata-puja-guide --exit-status`; a push alone is not a deployment receipt. Verify public HTTP responses and project-prefixed assets, then perform the parent's live-browser release checks.
 
 GitHub normally records a built-in `pages build and deployment` Actions run for this branch-based path. It does not rerun the application's Node build. Node 24 source-build verification remains a separate pending limit.
 
 The [Actions example](docs/github-pages-actions.example.yml) preserves the former Node 24 build/upload workflow as inactive documentation. It is **optional, not the initial release path**. Activating it requires separate approval and appropriate workflow permission before placing it in the active workflow directory or selecting a custom Actions publishing source. Do not expand authentication scopes to perform branch publishing.
 
-Keep `publication: "pending"` and `release: null` in the office until the parent's [live release gates](docs/OFFICE.md#release-gates) and follow-up metadata update are complete, even after a successful hosting deployment. Then follow [recording a deployment](docs/OFFICE.md#recording-a-deployment); never substitute a test fixture SHA or workflow run for real evidence.
+The office now records `publication: "deployed"` and the first verified release checkpoint. Follow [recording a deployment](docs/OFFICE.md#recording-a-deployment) for later checkpoints; never substitute fixture values or an unobserved future run. A metadata artifact necessarily contains evidence of an earlier verified release. Record its own later publication separately rather than repeatedly rebuilding to chase its own SHA.

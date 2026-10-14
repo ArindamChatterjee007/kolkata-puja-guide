@@ -1,8 +1,8 @@
 # Final Release Checks
 
-Review date: 2026-10-15 IST. UTC execution timestamps are on 2026-10-14. Office snapshot authored with `new Date().toISOString()`: `2026-10-14T22:44:26.167Z`.
+Review date: 2026-10-15 IST. UTC execution timestamps are on 2026-10-14. Current office snapshot authored with `new Date().toISOString()`: `2026-10-14T23:36:28.554Z`.
 
-**Decision: Hosting deployed successfully; office publication sign-off pending.** R1-R4 were fixed by the separate owning engineer and are resolved in the local regression record. The earlier office pass extended only the release contract. The separately authorized recovery below adapts deployment configuration and documentation, without changing planner code or the pending/null office snapshot. Historical HOLDs, reproductions and fingerprints are retained as history, not current blockers or current-build fingerprints.
+**Decision: First public release checkpoint verified, including the visible office and offline pages.** The board now records the observed first artifact/run, not an invented future publication. R1-R4 remain resolved in the local regression record. This pass changes release metadata and documentation only, with no planner/application changes, model fallback, subagents or account-permission changes. Historical pending states, HOLDs, reproductions and fingerprints below are history, not current blockers or current-build fingerprints.
 
 ## Deployment Recovery
 
@@ -43,9 +43,43 @@ The approved source inventory is **72 files**: the earlier 71-path inventory plu
 
 The matching Pages branch configuration already existed when the post-push API check ran, so no settings update was needed. Both branches were pushed normally, without replacing remote history. The old initial source commit was verified unpublished before amendment; public source history contains no active workflow file. The inactive example's content was preserved exactly. Source and artifact pattern scans passed without printing matches; the documentation check validated 153 local links before the receipt addition.
 
-The generated [pages-deployment-receipt.json](../test-results/pages-deployment-receipt.json) is retained locally in ignored test output, with the individual public-file hashes and API observations. This is static delivery and hosting evidence, **not** the parent's interactive live-browser release sign-off, a new planner E2E run, or Node 24 source-build execution. The deployed and source boards remain `publication: "pending"` with `release: null`. A subsequent documentation-only receipt commit does not change the build source or deployed artifact identified above.
+The generated [pages-deployment-receipt.json](../test-results/pages-deployment-receipt.json) is retained locally in ignored test output, with the individual public-file hashes and API observations. At that point it established static delivery and hosting, not interactive live-browser sign-off. The first artifact's board was pending/null; the subsequent live check and checkpoint update below supersede that publication state. A documentation-only receipt commit does not change the build source or deployed artifact identified above. This receipt is not a new planner E2E run or Node 24 source-build execution.
 
-## Current Verification
+## Live Release Checkpoint
+
+Read-only GitHub checks reconfirmed successful run [38653686670](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/38653686670), artifact `559dbda813354f57043ed4a76d0a7c87b87909a8`, completion `2026-10-14T23:23:08.000Z`, and unchanged Pages `legacy` / `gh-pages` / `/` configuration. The first build source is `144663c05bf2e0cac75181620a00f7a0ca4fca9e`; the later receipt-only source head was `b7860e3db3751f54962dc4d15fa1f9a81369dc94`.
+
+The prior parent public-browser check at `23:31:23.330Z` verified eight real 256-pixel OSM tiles, street-ready state, four retained stops and Optimize totals of 4h26-6h23 with a budget warning. At `23:31:34.566Z`, Bengali title/language and no overflow passed, then English was restored. No GPS permission was attempted or visit marked. These are the recorded parent observations, separate from the fresh execution below.
+
+Fresh public execution ran **`2026-10-14T23:35:49.946Z` to `23:35:57.890Z`**, using installed headless Chrome **155.0.8059.41**, Node **25.5.0**, and a new isolated context:
+
+- The public office had actual visible-document state, fetched the real 151-test/11-task/8-role board, derived correct counts, and passed matching search, combined status/role filters, empty results, List and Board. A hidden editor tab was not counted as live office evidence or an application defect; visibility was not overridden.
+- Both office and planner had verified CSS and PNG dimensions of **1440x900** and **390x844**, with no page-width overflow. The office desktop Board and mobile List screenshots were inspected. Original captures and `first-live-check.json` are local, ignored output under `test-results/public-final/`, not public artifact files.
+- The planner loaded actual decoded **256x256 OSM tiles**, with **27 HTTP 200 tile responses** across the check. Four stops remained after Optimize; EN/BN switching and Bengali layout passed. No tile fixture, GPS request, visit marking or user-browser storage change was used.
+- The public HTTPS service worker was ready and controlled exactly `https://arindamchatterjee007.github.io/kolkata-puja-guide/`. Its **60 observed cache entries** were same-origin and project-scoped, with no map tiles. Offline reload retained the planner's stored four-stop route and Bengali language; offline office navigation served its own shell, cached snapshot and 11 tasks. English was restored before the isolated context closed.
+- **Zero uncaught page errors, office console errors or online HTTP errors** were recorded. Offline fallback is expected and does not imply offline maps. Native Bengali, real OS/GPS, iOS, assistive technology and Node 24 source-build acceptance remain unverified.
+
+The board now uses `publication: "deployed"`, the exact five-field first release checkpoint, and a verified `public-release` task. The offline task records completed public planner and office checks. Its `fullSuite.checkedAt` retains the actual earlier completed 151-test run; later commands are recorded separately, never inferred from role rows or handoff sums. The **23/23 planner E2E** receipt remains historical and was not rerun because planner code is unchanged.
+
+This metadata publication contains a **prior verified release checkpoint**, not its own artifact SHA. The later source/artifact commits and built-in run must be recorded only after they exist; a source-only receipt commit does not require another artifact redeployment. The approved scope remains this isolated project, its public repository and site. Existing untracked legacy assets remain excluded and untouched.
+
+### Release-Record Validation
+
+The first substantive checkpoint patch was immediately followed by `npm run test:unit -- tests/unit/office.test.ts`: **57/57 PASS**. No fixture, validator, application code or office verification script needed modification; malicious-release rejection coverage remains unchanged.
+
+| Gate | Fresh result | UTC execution evidence |
+| --- | --- | --- |
+| Production TypeScript/Vite build | PASS | `2026-10-14T23:40:06.268Z` to `23:40:09.219Z` |
+| Full unit suite | 151/151 PASS, 8 files, including 57 office tests | `2026-10-14T23:40:09.219Z` to `23:40:10.011Z` |
+| Production office browser suite | 10/10 PASS, Chrome 155.0.8059.41, deployed snapshot | `2026-10-14T23:40:10.011Z` to `23:40:15.920Z`; suite receipt `23:40:15.724Z` |
+| Source/build board integrity | Byte-identical deployed checkpoint | `2026-10-14T23:40:15.940Z` |
+| `git diff --check` and editor diagnostics | PASS; no errors in the four edited files | After the checkpoint patch |
+
+The fresh machine receipts are ignored `test-results/public-final/validation.json` and `unit.json`, plus the generated office report. These executions do not replace the timestamp of the earlier full suite retained in the board. Only [README.md](../README.md), [OFFICE.md](OFFICE.md), this report and [board.json](../public/office/board.json) changed. The public-only source inventory remains 72 files; planner E2E was not rerun and its recorded 23 passes remain historical.
+
+## Pre-Public-Check Verification
+
+The following local record predates the live checkpoint above. Its pending publication wording and earlier fingerprints describe that historical revision only.
 
 | Gate | Result | Timestamp and scope |
 | --- | --- | --- |
@@ -57,7 +91,7 @@ The generated [pages-deployment-receipt.json](../test-results/pages-deployment-r
 
 Machine receipts are local and ignored: [platform-unit-results.json](../test-results/platform-unit-results.json), [office-verification.json](../test-results/office-verification.json) and [planner-e2e-results.json](../test-results/planner-e2e-results.json). Later local executions can replace those files; the timestamps above identify these specific runs. They are not public-board evidence links. The pre-extension 125-test full-suite count is the owning-engineer handoff; the fresh 151-test command above includes the 26 added office cases and is the recorded current aggregate.
 
-The office schema accepts `pending` only with `release: null`, or `deployed` only with a complete scoped Pages URL, repository, 40-hex commit, numeric workflow-run URL and canonical deployment date. Host/path/query/credential/traversal, missing/extra-field, SHA and timestamp negatives pass. The browser check renders a synthetic deployed fixture, rejects an unsafe replacement, retains valid state and restores the actual board. Those fixtures are not deployment evidence. The actual board stays pending/null, and header/footer provenance now follows the validated board rather than static publication text. See [OFFICE.md](OFFICE.md#recording-a-deployment) for the parent's post-deployment patch procedure.
+The office schema accepts `pending` only with `release: null`, or `deployed` only with a complete scoped Pages URL, repository, 40-hex commit, numeric workflow-run URL and canonical deployment date. Host/path/query/credential/traversal, missing/extra-field, SHA and timestamp negatives pass. The browser check renders a synthetic deployed fixture, rejects an unsafe replacement, retains valid state and restores the actual board. Those fixtures are not deployment evidence. At this historical point the actual board was pending/null; header/footer provenance followed the validated board rather than static publication text. See [OFFICE.md](OFFICE.md#recording-a-deployment) for the checkpoint procedure now applied above.
 
 Architecture/design review and integrated local quality execution are recorded complete within their limits. The catalogue is 33/33 sourced candidate pandals, 24 Metro nodes, 8 starts and 4 routes, not a current 2026 timetable. Six lint warnings remain: purity at [useNow.ts](../src/hooks/useNow.ts#L10), two refs warnings at [usePlanStore.ts](../src/hooks/usePlanStore.ts#L147) and [usePlanStore.ts](../src/hooks/usePlanStore.ts#L148), and effect-state warnings at [usePlanStore.ts](../src/hooks/usePlanStore.ts#L170), [MapView.tsx](../src/components/MapView.tsx#L236) and [App.tsx](../src/App.tsx#L163).
 
