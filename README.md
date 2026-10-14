@@ -1,6 +1,6 @@
 # PujaPath
 
-A Kolkata Puja planning application with a separate public engineering office. **Local gates passed; office publication sign-off pending.** Repository approval is not deployment evidence. See [the release record](docs/RELEASE_CHECKS.md) for timestamped results and remaining limits.
+A Kolkata Puja planning application with a separate public engineering office. **Hosted on GitHub Pages; office publication sign-off pending.** [Open PujaPath](https://arindamchatterjee007.github.io/kolkata-puja-guide/). The built-in deployment succeeded at `2026-10-14T23:23:08.000Z`; public static-file checks passed afterward. See [the release record](docs/RELEASE_CHECKS.md#verified-deployment) for the actual commits, run, timestamps and remaining limits.
 
 ## Planner Features
 

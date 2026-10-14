@@ -2,7 +2,7 @@
 
 Review date: 2026-10-15 IST. UTC execution timestamps are on 2026-10-14. Office snapshot authored with `new Date().toISOString()`: `2026-10-14T22:44:26.167Z`.
 
-**Decision: Local gates passed; office publication sign-off pending.** R1-R4 were fixed by the separate owning engineer and are resolved in the local regression record. The earlier office pass extended only the release contract. The separately authorized recovery below adapts deployment configuration and documentation, without changing planner code or the pending/null office snapshot. Historical HOLDs, reproductions and fingerprints are retained as history, not current blockers or current-build fingerprints.
+**Decision: Hosting deployed successfully; office publication sign-off pending.** R1-R4 were fixed by the separate owning engineer and are resolved in the local regression record. The earlier office pass extended only the release contract. The separately authorized recovery below adapts deployment configuration and documentation, without changing planner code or the pending/null office snapshot. Historical HOLDs, reproductions and fingerprints are retained as history, not current blockers or current-build fingerprints.
 
 ## Deployment Recovery
 
@@ -23,6 +23,27 @@ Fresh recovery checks, using Node 25.5.0:
 Generated receipts are local and ignored: [deployment-recovery-validation.json](../test-results/deployment-recovery-validation.json) and [deployment-recovery-unit.json](../test-results/deployment-recovery-unit.json). These are fresh executions, not the older results below. The existing **23/23 planner E2E** receipt was not rerun: planner/runtime files are unchanged. Node 24 source-build execution, the parent's live-browser release check and the board's follow-up publication metadata remain separate requirements. The built-in Pages deployment does not execute the optional Node 24 workflow.
 
 The approved source inventory is **72 files**: the earlier 71-path inventory plus [public/FONT_LICENSES.md](../public/FONT_LICENSES.md), with the active workflow replaced by the inactive example. Static publication permits only the generated HTML, manifest/registration/worker scripts, hashed JS/CSS/fonts, named public images/licenses/icons, office JSON and empty `.nojekyll`. Recheck exact regular-file paths and secret/private-path patterns before each explicit stage; pattern scanning is not a guarantee that every possible secret format is absent.
+
+### Verified Deployment
+
+| Evidence | Verified value |
+| --- | --- |
+| Public repository | [ArindamChatterjee007/kolkata-puja-guide](https://github.com/ArindamChatterjee007/kolkata-puja-guide) |
+| Pages | [PujaPath](https://arindamchatterjee007.github.io/kolkata-puja-guide/) |
+| Source commit used for the build | `144663c05bf2e0cac75181620a00f7a0ca4fca9e` |
+| Published `gh-pages` artifact commit | `559dbda813354f57043ed4a76d0a7c87b87909a8` |
+| Actual Pages Actions run | [38653686670](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/38653686670), `completed` / `success` |
+| Actual jobs | `build`, `report-build-status` and `deploy`: all `completed` / `success`; confirmed with `gh run watch --exit-status` and the jobs API |
+| Environment deployment | `7079675174`, `github-pages`, `success`, matching artifact SHA and Pages URL |
+| Deployment completed | `2026-10-14T23:23:08.000Z` (October 15, 04:53:08 IST) |
+| Pages API | `status: built`, `build_type: legacy`, `source: { branch: gh-pages, path: / }` |
+| File counts | 72 reviewed source files; 63 artifact files: 62 generated files plus zero-byte `.nojekyll` |
+| Public HTTP verification | 62/62 served files returned HTTP 200 and matched audited SHA-256 bytes under `/kolkata-puja-guide/`; expected PujaPath index and separate office HTML confirmed |
+| HTTP check interval | `2026-10-14T23:25:14.191Z` to `2026-10-14T23:25:33.521Z`; combined receipt verified `2026-10-14T23:25:34.390Z` |
+
+The matching Pages branch configuration already existed when the post-push API check ran, so no settings update was needed. Both branches were pushed normally, without replacing remote history. The old initial source commit was verified unpublished before amendment; public source history contains no active workflow file. The inactive example's content was preserved exactly. Source and artifact pattern scans passed without printing matches; the documentation check validated 153 local links before the receipt addition.
+
+The generated [pages-deployment-receipt.json](../test-results/pages-deployment-receipt.json) is retained locally in ignored test output, with the individual public-file hashes and API observations. This is static delivery and hosting evidence, **not** the parent's interactive live-browser release sign-off, a new planner E2E run, or Node 24 source-build execution. The deployed and source boards remain `publication: "pending"` with `release: null`. A subsequent documentation-only receipt commit does not change the build source or deployed artifact identified above.
 
 ## Current Verification
 
