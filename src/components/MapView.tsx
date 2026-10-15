@@ -4,7 +4,7 @@ import type { DivIcon, Map as LeafletMap, TileLayer as LeafletTileLayer } from '
 import {
   Circle, CircleMarker, MapContainer, Marker, Polygon, Polyline, Popup, TileLayer, Tooltip, useMap,
 } from 'react-leaflet'
-import { Layers, LocateFixed, MapPinned, RotateCcw } from 'lucide-react'
+import { Layers, LocateFixed, MapPinned, Navigation, RotateCcw } from 'lucide-react'
 import type { Coordinate, Language, MetroStation, NamedCoordinate, Pandal } from '../types'
 import type { TravelMode } from '../domain/travel'
 import type { DevicePosition } from '../hooks/useGeolocation'
@@ -36,6 +36,7 @@ interface MapViewProps {
   locating: boolean
   onSelect: (id: string) => void
   onOpenDetails: (id: string) => void
+  onNavigate: (id: string) => void
   onToggleStop: (id: string) => void
   onLocate: () => void
   onFitRoute: () => void
@@ -220,7 +221,7 @@ function SchematicLayer({ language, metroStations }: { language: Language, metro
 export function MapView(props: MapViewProps) {
   const {
     language, pandals, stopIds, visitedIds, selectedId, nextStopId, origin, devicePosition, segments,
-    metroStations, focus, online, locating, onSelect, onOpenDetails, onToggleStop, onLocate, onFitRoute,
+    metroStations, focus, online, locating, onSelect, onOpenDetails, onToggleStop, onLocate, onFitRoute, onNavigate,
   } = props
   const [streets, setStreets] = useState<StreetsState>(() => (online ? 'loading' : 'failed'))
   const [epoch, setEpoch] = useState(0)
@@ -296,6 +297,9 @@ export function MapView(props: MapViewProps) {
                 {alternate && <span className="pp-popup__alt">{alternate}</span>}
                 <span className="pp-popup__zone">{zoneLabel(language, pandal.zone)}</span>
                 <div className="pp-popup__actions">
+                  <button type="button" className="icon-btn" onClick={() => onNavigate(pandal.id)} title={t(language, 'navigateTo', { name })} aria-label={t(language, 'navigateTo', { name })}>
+                    <Navigation size={18} aria-hidden="true" />
+                  </button>
                   <button type="button" className="btn btn--small" onClick={() => onOpenDetails(pandal.id)}>
                     {t(language, 'details')}
                   </button>

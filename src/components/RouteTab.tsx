@@ -1,5 +1,5 @@
 import {
-  ArrowDown, ArrowUp, CarFront, Check, ExternalLink, Footprints, LocateFixed, MapPin, Play, Sparkles, Square,
+  ArrowDown, ArrowUp, CarFront, Check, ExternalLink, Footprints, LocateFixed, MapPin, Navigation, Play, Sparkles, Square,
   TrainFront, Trash2, TriangleAlert, Undo2,
 } from 'lucide-react'
 import type { Coordinate, Landmark, Language, Pace, Pandal, TravelPreference, Visit } from '../types'
@@ -50,6 +50,7 @@ interface RouteTabProps {
   onOptimize: () => void
   onTrim: () => void
   onOpenDetails: (id: string) => void
+  onNavigate: (id: string | null) => void
   onShowOnMap: (id: string) => void
   onToggleVisit: (id: string) => void
   onStartJourney: () => void
@@ -91,7 +92,7 @@ export function RouteTab(props: RouteTabProps) {
     departure, departureChoices, snapshot, freshness, aged, planError, journeyActive, autoCheckIn, autoStatus,
     nextStopId, selectedId, onStartChange, onUseLocation, onForgetLocation, onPreference, onPace, onBudget,
     onDeparture, onMove, onRemove, onClear, onOptimize, onTrim, onOpenDetails, onShowOnMap, onToggleVisit,
-    onStartJourney, onStopJourney, onAutoToggle,
+    onStartJourney, onStopJourney, onAutoToggle, onNavigate,
   } = props
   const visitById = new Map(visits.map((visit) => [visit.pandalId, visit]))
   const route = snapshot?.plan ?? null
@@ -174,6 +175,24 @@ export function RouteTab(props: RouteTabProps) {
 
   return (
     <div className="tab-body">
+      <section className="navigation-next" aria-labelledby="navigation-next-heading">
+        <h2 id="navigation-next-heading" className="setting__label">{t(language, 'navigationNext')}</h2>
+        <div className="navigation-next__target" aria-live="polite">
+          {nextStop ? <><strong>{pickName(language, nextStop)}</strong><span className="navigation__address">{nextStop.address}</span></>
+            : <p>{t(language, stops.length > 0 ? 'allVisited' : 'navigationNoStops')}</p>}
+        </div>
+        <div className="navigation-next__actions">
+          {nextStop && (
+            <button type="button" className="btn btn--primary" onClick={() => onNavigate(nextStop.id)} aria-label={t(language, 'navigateTo', { name: pickName(language, nextStop) })} title={t(language, 'navigateTo', { name: pickName(language, nextStop) })}>
+              <Navigation size={18} aria-hidden="true" /> {t(language, 'navigate')}
+            </button>
+          )}
+          <button type="button" className={`btn ${nextStop ? 'btn--quiet' : 'btn--primary'}`} onClick={() => onNavigate(null)}>
+            <MapPin size={18} aria-hidden="true" /> {t(language, 'navigationAnywhere')}
+          </button>
+        </div>
+      </section>
+
       {journeyActive && (
         <div className="journey-strip" role="status">
           <span className="journey-strip__dot" aria-hidden="true" />
@@ -363,6 +382,9 @@ export function RouteTab(props: RouteTabProps) {
                       )}
                     </div>
                     <div className="stop__actions">
+                      <button type="button" className="icon-btn" onClick={() => onNavigate(stop.id)} aria-label={t(language, 'navigateTo', { name })} title={t(language, 'navigateTo', { name })}>
+                        <Navigation size={18} aria-hidden="true" />
+                      </button>
                       <button
                         type="button"
                         className={`icon-btn${visit ? ' is-on' : ''}`}

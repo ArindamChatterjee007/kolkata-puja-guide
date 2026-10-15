@@ -1,8 +1,29 @@
 # Final Release Checks
 
-Review date: 2026-10-15 IST. UTC execution timestamps are on 2026-10-14. Current office snapshot authored with `new Date().toISOString()`: `2026-10-14T23:36:28.554Z`.
+Review date: 2026-10-15 IST. Navigation-release timestamps below are UTC on October 15; earlier deployment history is dated October 14. Current office snapshot authored with `new Date().toISOString()`: `2026-10-15T06:40:03.924Z`.
 
-**Decision: Public release checkpoint and its metadata publication verified, including the visible office and offline pages.** The board records the observed first artifact/run; the subsequent successful metadata publication is recorded below. R1-R4 remain resolved in the local regression record. This pass changes release metadata and documentation only, with no planner/application changes, model fallback, subagents or account-permission changes. Historical pending states, HOLDs, reproductions and fingerprints below are history, not current blockers or current-build fingerprints.
+**Decision: The existing public release is verified; the new navigation feature has passed all local release gates and awaits publication and public checks.** The board retains the observed first artifact/run as a verified checkpoint, not the SHA of the artifact carrying it. R1-R4 remain resolved. This release includes the already implemented navigation changes; release-engineering edits are limited to documentation and public office metadata. No fallback, subagents, active workflow or account-permission changes are used. Historical pending states, HOLDs, reproductions and fingerprints below describe their dated revisions only.
+
+## Navigation Release
+
+The approved navigation changes add next-unvisited and anywhere entry points, per-stop/detail/map navigation, bilingual destination cues and focus handling, Walk/Metro + Bus/Drive modes, and recommendations only from fresh plans. Current-location Google Maps URLs omit raw GPS and any explicit origin. Only current Walk/Drive links use `dir_action=navigate`; transit and public-origin previews do not. Typed Unicode destinations are bounded to 200 characters and URL-encoded, not saved or shared by PujaPath. The tab-local draft can be edited offline. Provider navigation may require connectivity; actual GPS, native Maps launching, visits and travel are not part of this release verification.
+
+The owning handoff reports 159 unit tests, 33 planner E2E tests and a successful build before the last focus/query accessibility refinement. Its independent review was accepted with no blockers, 66 captures and nine automated accessibility states; requested model runtime remains unverified. These are handoff observations, separate from the fresh release-engineer executions below. The earlier focused receipt ran from `2026-10-15T06:31:31.123Z` for 4,770.902 ms: one `navigation encodes` check passed, zero failures/skips/flaky cases.
+
+The first metadata edit was immediately checked with `npm run test:unit -- tests/unit/office.test.ts`. It rejected a new direct `.spec.ts` evidence link because the existing contract permits `.test.ts` links and documentation. Removing that metadata link, while retaining the release-document reference, restored **57/57 PASS**. No validator, fixture or application change was needed.
+
+| Gate | Fresh result | UTC execution evidence |
+| --- | --- | --- |
+| Full unit suite | 159/159 PASS, 8 files, including 57 office tests | `2026-10-15T06:35:40.020Z` to `06:35:40.483Z` |
+| TypeScript/Vite production build | PASS, Node 25.5.0 | `06:35:40.499Z` to `06:35:43.498Z` |
+| Production office browser suite | 10/10 PASS, Chrome 155.0.8059.41 | `06:35:43.498Z` to `06:35:48.737Z`; suite receipt `06:35:48.543Z` |
+| First full planner E2E execution | 32/33 PASS; one accessibility failure retained | Started `06:35:49.228Z`, duration 59,623.993 ms |
+| Unchanged focused 320px navigation accessibility check | 1/1 PASS | `06:37:55.148Z` to `06:38:01.471Z` |
+| Unchanged full planner E2E rerun | 33/33 PASS; zero failed/skipped/flaky cases in this execution | Started `06:38:22.302Z`, duration 60,762.336 ms; command completed `06:39:23.090Z` |
+
+The first full run's `320-bn-navigation-entry` axe scan observed empty Leaflet `role="tooltip"` nodes during a map update. The same focused test and full suite passed unchanged. This is a non-reproduced transition-time accessibility finding, not a claimed code fix or a first-try clean run; its JSON and failure artifacts are retained under ignored `test-results/navigation-release/`. No arbitrary sleeps, test weakening or additional planner edits were used. The final snapshot is rebuilt and office-checked before publication. The board's `fullSuite.checkedAt` records the actual 159-test completion above; later metadata checks are not substituted for it.
+
+Publication remains the existing `legacy` branch publisher on `gh-pages` at `/`, with an empty `.nojekyll`. Main starts at `00d89f7485efa07867b0563d04d011e68c3043ff`; the last published metadata artifact is `4a4969c1ca9492cb98d74b6258e0cba8b4a78107`, successful run [38655925441](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/38655925441), completed `2026-10-14T23:44:55.000Z`. New source/artifact/run values must be recorded only after their actual publication and public checks. The three untracked legacy assets remain untouched and excluded.
 
 ## Deployment Recovery
 

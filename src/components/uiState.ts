@@ -158,6 +158,36 @@ export function directionsUrl(destination: Coordinate, origin: Coordinate | null
   return `https://www.google.com/maps/dir/?${params.toString()}`
 }
 
+export const NAVIGATION_QUERY_LIMIT = 200
+
+export function navigationQuery(value: string): string {
+  return value.trim().slice(0, NAVIGATION_QUERY_LIMIT).trim()
+}
+
+function navigationTarget(value: Coordinate | string): string | null {
+  if (typeof value === 'string') return navigationQuery(value) || null
+  if (!Number.isFinite(value.lat) || !Number.isFinite(value.lng)
+    || Math.abs(value.lat) > 90 || Math.abs(value.lng) > 180) return null
+  return `${value.lat.toFixed(5)},${value.lng.toFixed(5)}`
+}
+
+export function navigationUrl(
+  destination: Coordinate | string, origin: Coordinate | string | null = null, mode: DirectionsMode = 'walking',
+): string | null {
+  const target = navigationTarget(destination)
+  const start = origin === null ? null : navigationTarget(origin)
+  if (!target || (origin !== null && !start)) return null
+  const params = new URLSearchParams({ api: '1', destination: target, travelmode: mode })
+  if (start) params.set('origin', start)
+  if (origin === null && mode !== 'transit') params.set('dir_action', 'navigate')
+  return `https://www.google.com/maps/dir/?${params.toString()}`
+}
+
+export function navigationMode(leg: LegEstimate | undefined, freshness: PlanFreshness): DirectionsMode {
+  if (freshness !== 'fresh' || !leg) return 'walking'
+  return leg.mode === 'metro' ? 'transit' : leg.mode === 'road' ? 'driving' : 'walking'
+}
+
 const SHARE_HASH = /^#plan=[A-Za-z0-9_.,%+=&-]*$/
 
 export function buildShareUrl(location: { origin: string, pathname: string }, hash: string): string | null {

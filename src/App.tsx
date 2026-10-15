@@ -24,12 +24,14 @@ import { RouteTab } from './components/RouteTab'
 import { MapView } from './components/MapView'
 import type { MapFocusRequest, RouteSegment } from './components/MapView'
 import { PandalDialog } from './components/PandalDialog'
+import { NavigationDialog } from './components/NavigationDialog'
+import type { NavigationDraft } from './components/NavigationDialog'
 import { ConfirmDialog, InfoDialog, ShareDialog } from './components/Dialogs'
 import type { ConfirmRequest } from './components/Dialogs'
 import { Toasts } from './components/Toasts'
 import {
   applyOptimizedOrder, buildShareUrl, departureOptions, nextPendingStopId, orderKey, planFreshness,
-  reportsKey, resolveDeparture, settingsKey, visitedKey,
+  reportsKey, resolveDeparture, settingsKey, visitedKey, navigationMode,
 } from './components/uiState'
 import type { PlanSettings, PlanSnapshot, SortMode } from './components/uiState'
 import './App.css'
@@ -71,6 +73,7 @@ export default function App() {
   const [mobileLayout, setMobileLayout] = useState<MobileLayout>('split')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [navigation, setNavigation] = useState<NavigationDraft | null>(null)
   const [query, setQuery] = useState('')
   const [zone, setZone] = useState<Zone | 'all'>('all')
   const [sort, setSort] = useState<SortMode>('zone')
@@ -111,6 +114,11 @@ export default function App() {
   const nextStopId = nextPendingStopId(plan.stopIds, plan.visits)
   const detailPandal = detailId ? PANDAL_BY_ID.get(detailId) ?? null : null
   const departureChoices = departureOptions(now)
+  const navigationStopId = navigation?.destination.kind === 'pandal' ? navigation.destination.id : null
+  const navigationIndex = navigationStopId ? plan.stopIds.indexOf(navigationStopId) : -1
+  const navigationPrevious = navigationIndex > 0 ? PANDAL_BY_ID.get(plan.stopIds[navigationIndex - 1]) : undefined
+  const navigationLeg = freshness === 'fresh' && !aged && navigationStopId
+    ? snapshot?.plan.stops.find((stop) => stop.pandalId === navigationStopId)?.leg : undefined
 
   const segments: RouteSegment[] = (() => {
     if (snapshot && freshness !== 'changed') {
@@ -253,6 +261,16 @@ export default function App() {
     setSelectedId(id)
     focusPoint(pandal)
     if (!wide && mobileLayout === 'list') setMobileLayout('split')
+  }
+
+  function openNavigation(id: string | null) {
+    const pandal = id ? PANDAL_BY_ID.get(id) : undefined
+    setDetailId(null)
+    setNavigation({
+      destination: pandal ? { kind: 'pandal', id: pandal.id } : { kind: 'query', query: '' },
+      originId: 'current',
+      mode: null,
+    })
   }
 
   function optimize() {
@@ -410,6 +428,7 @@ export default function App() {
         checkInState.current = createCheckInState()
         setSelectedId(null)
         setInfoOpen(false)
+        setNavigation(null)
         toasts.push(t(language, 'cleared'))
       },
     })
@@ -447,7 +466,6 @@ export default function App() {
 
   const detailVisit = detailId ? plan.visits.find((visit) => visit.pandalId === detailId) : undefined
   const detailReport = detailId ? plan.reports.find((item) => item.pandalId === detailId) : undefined
-  const directionsOrigin: Coordinate | null = usingDevice ? null : landmark
 
   const tabs: { id: Tab, label: string, icon: typeof Compass }[] = [
     { id: 'explore', label: t(language, 'tabExplore'), icon: Compass },
@@ -611,6 +629,7 @@ export default function App() {
                   onOptimize={optimize}
                   onTrim={trimToBudget}
                   onOpenDetails={setDetailId}
+                  onNavigate={openNavigation}
                   onShowOnMap={showOnMap}
                   onToggleVisit={toggleVisit}
                   onStartJourney={startJourney}
@@ -638,6 +657,7 @@ export default function App() {
             locating={geo.status === 'locating'}
             onSelect={setSelectedId}
             onOpenDetails={setDetailId}
+            onNavigate={openNavigation}
             onToggleStop={toggleStop}
             onLocate={() => void locateDevice()}
             onFitRoute={() => focusBounds([origin, ...stops])}
@@ -652,15 +672,26 @@ export default function App() {
         stopIds={plan.stopIds}
         visit={detailVisit}
         report={detailReport}
-        origin={directionsOrigin}
-        originName={origin.name}
         metroStations={METRO_STATIONS}
         onClose={() => setDetailId(null)}
+        onNavigate={openNavigation}
         onToggleStop={toggleStop}
         onToggleVisit={toggleVisit}
         onReport={report}
         onClearReport={(id) => dispatch({ type: 'clearReport', id })}
         onShowOnMap={showOnMap}
+      />
+      <NavigationDialog
+        language={language}
+        draft={navigation}
+        pandals={PANDALS}
+        startPoints={START_POINTS}
+        plannedStart={usingDevice ? null : landmark}
+        previousStop={navigationPrevious}
+        recommendedMode={navigationLeg ? navigationMode(navigationLeg, 'fresh') : undefined}
+        online={online}
+        onChange={setNavigation}
+        onClose={() => setNavigation(null)}
       />
       <InfoDialog language={language} open={infoOpen} onClose={() => setInfoOpen(false)} onRequestClear={requestClearDevice} />
       <ConfirmDialog language={language} request={confirm} onClose={() => setConfirm(null)} />

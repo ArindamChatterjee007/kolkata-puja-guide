@@ -10,11 +10,19 @@ Architecture and design review are complete to the scoped local evidence in [REL
 
 Candidate coverage is 33/33 sourced entries, 24 metro nodes, 8 start points, and 4 example routes. This describes the source-backed catalogue, not a verified current 2026 festival timetable. The planner interface is owned by the UI workstream; its integrated review must not be inferred from office checks.
 
+## Navigation Update
+
+The office now includes a locally verified **Next-stop and anywhere navigation** task under Architecture, with the related Design report referencing its accessibility review. It covers current-location and public-origin directions, encoded bilingual typed destinations, fresh-plan recommendations, open-dialog offline drafts and no automatic GPS or visit mutation. The accepted independent review remains handoff evidence, not exact model-runtime certification.
+
+Fresh release execution passed **159/159 unit tests in 8 files** at `2026-10-15T06:35:40.020Z` to `06:35:40.483Z`, the production build, and **10/10 office browser checks** through `06:35:48.737Z`. All **33 planner E2E checks** passed on the unchanged full rerun started `06:38:22.302Z` (60,762.336 ms). The first run's empty-Leaflet-tooltip accessibility failure and successful focused rerun remain recorded in [Navigation Release](RELEASE_CHECKS.md#navigation-release); no assertion or code was changed to obtain the pass.
+
+This feature's public deployment check is next; the existing site is already deployed. The 12-task snapshot retains its first verified release checkpoint unchanged. `fullSuite` uses the completed 159-test receipt, not a handoff or a sum of focused checks. Release documentation will record the new artifact after it exists without rebuilding merely to embed its own SHA.
+
 ## Snapshot Contract
 
 The schema version is 1. IDs must be unique stable slugs. Each task refers to a defined role and one of `backlog`, `in-progress`, `review`, `verified`, or `blocked`. A verified task must have at least one evidence link; a link is supporting evidence, not an automatic test execution or reviewer signature. Every task's summary must distinguish handoff results from locally executed checks.
 
-`snapshotAt` is a real ISO timestamp captured with `new Date().toISOString()` when the snapshot is authored or updated. It is not refreshed just because a page is opened. The current value is `2026-10-14T23:36:28.554Z` (October 15 IST). Statistics are derived from task records, not invented percentages.
+`snapshotAt` is a real ISO timestamp captured with `new Date().toISOString()` when the snapshot is authored or updated. It is not refreshed just because a page is opened. The current value is `2026-10-15T06:40:03.924Z`. Statistics are derived from task records, not invented percentages.
 
 Publication is a discriminated contract: `publication: "pending"` requires `release: null`; `publication: "deployed"` requires exactly five release fields. The current board is deployed and records the first verified release checkpoint. Unsupported runtime attribution and top-level/task commit fields are still rejected.
 

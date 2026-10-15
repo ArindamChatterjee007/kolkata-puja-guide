@@ -2,13 +2,26 @@
 
 A Kolkata Puja planning application with a separate public engineering office. **Public release checkpoint verified.** [Open PujaPath](https://arindamchatterjee007.github.io/kolkata-puja-guide/) or [the office](https://arindamchatterjee007.github.io/kolkata-puja-guide/office.html). The first built-in deployment succeeded at `2026-10-14T23:23:08.000Z`; public planner, visible office and offline checks passed through `23:35:57.890Z`. See [the release record](docs/RELEASE_CHECKS.md#live-release-checkpoint) for actual evidence and remaining limits. The office records that verified release checkpoint, not a self-referential artifact hash.
 
+**Navigation update:** all local release gates passed, including 159 unit tests, 33 planner E2E tests, the production build and 10 office browser checks. This update's publication and public verification are next; the existing public site remains deployed. See [navigation release](docs/RELEASE_CHECKS.md#navigation-release) for the feature-specific status and the first-run accessibility failure retained in the record.
+
 ## Planner Features
 
 - Explore 33 source-backed candidate pandals, with English/Bengali search, zone filters, a street map and an offline schematic. The catalogue is not a verified 2026 festival timetable.
 - Start from a landmark or explicitly chosen device location, edit up to 12 stops, and compare approximate walking, Metro and road travel with queues and visit allowances. Bus travel is an external directions link, not a live bus timetable or locally computed bus itinerary.
+- Navigate to the next unvisited stop without optimizing first, choose a particular stop from the route, detail view or map, or use **Navigate somewhere** for a typed destination.
 - Keep route order under user control. Optimization includes a budget check and optional trimming; changed or expired crowd reports mark estimates stale until explicit re-optimization.
 - Save progress locally, mark visits, undo completion and share public stop IDs/settings. Manual crowd reports expire after two hours; they are not shared live observations.
 - Use English or Bengali controls, including 44-by-44-pixel language targets on narrow screens. Install the PWA where supported after a first online visit; offline use retains the app shell and saved plan, not street tiles.
+
+## Navigation
+
+1. Choose **Navigate** for the next unvisited stop, a stop's navigation control, or **Navigate somewhere**. The anywhere control focuses the empty destination field; enter a place or address in English or Bengali, up to 200 characters.
+2. **From: Current location** is the default. Choose Walk, Metro + Bus or Drive. A fresh optimized plan can recommend a mode; stale or missing estimates do not become recommendations.
+3. Use the Google Maps link to continue. Current-location Walk and Drive links request navigation; Metro + Bus opens transit directions without a turn-by-turn flag. Selecting the planned start or a public point produces a route preview with that public origin instead.
+
+Opening or editing the dialog never requests GPS or marks a visit. Current-location links omit the origin entirely: Google Maps resolves location and any permission through its own interface. PujaPath does not put raw GPS into the URL. Typed destination text is encoded as data, kept only in the open dialog's tab-local draft, and excluded from saved plans and shared links; following the link sends the chosen destination to Google Maps. The open draft survives connectivity changes and remains editable offline. Dismissing the dialog or reloading discards it; reopening starts a new draft.
+
+Google Maps may need connectivity and decides whether to open its website or installed app. PujaPath does not provide its own turn-by-turn engine, offline maps, live transit, verified road closures or exact venue entrances. Public pins are approximate. Auto-check-in is separately opt-in and pauses while the app is backgrounded; launching directions does not record a visit.
 
 ## Local Development
 
@@ -23,7 +36,7 @@ npm run dev -- --host 127.0.0.1
 
 Open the URL Vite prints for the planner, or append `office.html` for the task register. For the generated production build, use `npm run preview -- --host 127.0.0.1`. Service workers are generated for production, not the development server. A first online visit is required before offline use.
 
-`npm run test:unit` covers the domain, storage, catalogue, UI state and public-office schema/configuration. The local record has 151 passing tests in 8 files, including 57 office tests, plus 10 production office browser checks. The saved planner E2E receipt has 23 passes with mocked GPS and controlled tiles; it was not rerun by the release-record pass. TypeScript/Vite build passes; recorded lint exits zero with six warnings. Public deployment and live-browser evidence are recorded separately from these counts. Native-language and real-device acceptance remain unverified. Local execution used Node 25.5.0; Node 24 source-build CI has not run.
+`npm run test:unit` covers the domain, storage, catalogue, UI state and public-office schema/configuration. The navigation release freshly passed 159 tests in 8 files, including 57 office tests, the TypeScript/Vite build, 10 production office browser checks and all 33 planner E2E checks. The planner suite uses controlled GPS/tiles. Its first run had one empty-Leaflet-tooltip accessibility failure; the unchanged focused check and complete rerun passed, with the original failure preserved in the release record. Recorded lint exits zero with six warnings; lint was not rerun for this release. Public deployment and live-browser evidence are separate from local counts. Native-language and real-device acceptance remain unverified. Local execution used Node 25.5.0; Node 24 source-build CI has not run.
 
 ## Implementation
 

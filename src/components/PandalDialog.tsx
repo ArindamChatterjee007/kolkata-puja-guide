@@ -1,11 +1,10 @@
-import { Check, ExternalLink, MapPin, Minus, Plus, Undo2 } from 'lucide-react'
-import type { Coordinate, CrowdLevel, CrowdReport, Language, MetroStation, Pandal, Visit } from '../types'
+import { Check, ExternalLink, MapPin, Minus, Navigation, Plus, Undo2 } from 'lucide-react'
+import type { CrowdLevel, CrowdReport, Language, MetroStation, Pandal, Visit } from '../types'
 import { estimateCrowd } from '../domain/crowd'
 import { haversineMetres } from '../domain/geo'
 import { crowdLabel, formatClock, formatDate, formatDuration, formatMinuteRange, formatNumber, otherName, pickName, t, zoneLabel } from '../i18n'
 import { Modal } from './Modal'
-import { directionsUrl, reportTimeLeftMs } from './uiState'
-import type { DirectionsMode } from './uiState'
+import { reportTimeLeftMs } from './uiState'
 
 interface PandalDialogProps {
   language: Language
@@ -14,10 +13,9 @@ interface PandalDialogProps {
   stopIds: readonly string[]
   visit: Visit | undefined
   report: CrowdReport | undefined
-  origin: Coordinate | null
-  originName: string
   metroStations: readonly MetroStation[]
   onClose: () => void
+  onNavigate: (id: string) => void
   onToggleStop: (id: string) => void
   onToggleVisit: (id: string) => void
   onReport: (id: string, level: CrowdLevel) => void
@@ -26,16 +24,11 @@ interface PandalDialogProps {
 }
 
 const LEVELS: CrowdLevel[] = ['light', 'moderate', 'heavy']
-const DIRECTION_MODES: { mode: DirectionsMode, key: 'dirWalking' | 'dirTransit' | 'dirDriving' }[] = [
-  { mode: 'walking', key: 'dirWalking' },
-  { mode: 'transit', key: 'dirTransit' },
-  { mode: 'driving', key: 'dirDriving' },
-]
 
 export function PandalDialog(props: PandalDialogProps) {
   const {
-    language, pandal, now, stopIds, visit, report, origin, originName, metroStations,
-    onClose, onToggleStop, onToggleVisit, onReport, onClearReport, onShowOnMap,
+    language, pandal, now, stopIds, visit, report, metroStations,
+    onClose, onToggleStop, onToggleVisit, onReport, onClearReport, onShowOnMap, onNavigate,
   } = props
   const open = pandal !== null
   const name = pandal ? pickName(language, pandal) : ''
@@ -79,6 +72,9 @@ export function PandalDialog(props: PandalDialogProps) {
           </dl>
 
           <div className="detail__actions">
+            <button type="button" className="btn btn--primary" onClick={() => onNavigate(pandal.id)} aria-label={t(language, 'navigateTo', { name })} title={t(language, 'navigateTo', { name })}>
+              <Navigation size={18} aria-hidden="true" /> {t(language, 'navigate')}
+            </button>
             <button
               type="button"
               className={`btn ${inRoute ? 'btn--quiet' : 'btn--primary'}`}
@@ -134,19 +130,6 @@ export function PandalDialog(props: PandalDialogProps) {
             ) : (
               <p className="hint">{t(language, 'reportHint')}</p>
             )}
-          </section>
-
-          <section className="detail__section" aria-labelledby="directions-heading">
-            <h3 id="directions-heading" className="section-title">{t(language, 'directions')}</h3>
-            <p className="hint">{t(language, 'dirFrom', { origin: originName })}</p>
-            <div className="link-row">
-              {DIRECTION_MODES.map(({ mode, key }) => (
-                <a key={mode} className="btn btn--quiet" href={directionsUrl(pandal, origin, mode)} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink size={16} aria-hidden="true" /> {t(language, key)}
-                </a>
-              ))}
-            </div>
-            <p className="hint">{t(language, 'externalNote')}</p>
           </section>
 
           <section className="detail__section" aria-labelledby="source-heading">

@@ -8,7 +8,7 @@ import type { LegEstimate } from '../../src/domain/travel'
 import {
   applyOptimizedOrder, buildShareUrl, clampStops, departureOptions, directionsUrl, explainLeg, foldLatin,
   isInPlanningArea, matchesPandal, moveItem, nextPendingStopId, orderKey, planFreshness, reportTimeLeftMs,
-  reportsKey, resolveDeparture, settingsKey, sortPandals, visitedKey,
+  reportsKey, resolveDeparture, settingsKey, sortPandals, visitedKey, navigationUrl, navigationMode, navigationQuery,
 } from '../../src/components/uiState'
 import type { PlanSettings } from '../../src/components/uiState'
 import { formatClock, formatMinuteRange, formatNumber, t } from '../../src/i18n'
@@ -158,6 +158,56 @@ describe('external links and sharing', () => {
     expect(url.searchParams.get('origin')).toBe('22.60130,88.37260')
     expect(url.searchParams.get('travelmode')).toBe('transit')
     expect(new URL(directionsUrl({ lat: 1, lng: 2 }, null, 'walking')).searchParams.has('origin')).toBe(false)
+  })
+
+  it.each(['walking', 'transit', 'driving'] as const)('hands off %s without exporting a device origin', (mode) => {
+    const url = new URL(navigationUrl(byId('bagbazar'), null, mode)!)
+    expect(url.origin + url.pathname).toBe('https://www.google.com/maps/dir/')
+    expect(url.searchParams.get('api')).toBe('1')
+    expect(url.searchParams.get('destination')).toBe('22.60470,88.36613')
+    expect(url.searchParams.has('origin')).toBe(false)
+    expect(url.searchParams.get('travelmode')).toBe(mode)
+    expect(url.searchParams.get('dir_action')).toBe(mode === 'transit' ? null : 'navigate')
+  })
+
+  it('previews an explicitly selected public or typed origin', () => {
+    const url = new URL(navigationUrl(byId('bagbazar'), { lat: 22.6013, lng: 88.3726 }, 'driving')!)
+    expect(url.searchParams.get('origin')).toBe('22.60130,88.37260')
+    expect(url.searchParams.has('dir_action')).toBe(false)
+    const typed = new URL(navigationUrl(' Howrah Station ', ' Esplanade, Kolkata ')!)
+    expect(typed.searchParams.get('destination')).toBe('Howrah Station')
+    expect(typed.searchParams.get('origin')).toBe('Esplanade, Kolkata')
+    expect(typed.searchParams.get('travelmode')).toBe('walking')
+  })
+
+  it.each(['হাওড়া স্টেশন', 'javascript:alert(1)&origin=private#<script>'])('encodes a typed destination as data: %s', (query) => {
+    const url = new URL(navigationUrl(`  ${query}  `)!)
+    expect(url.origin + url.pathname).toBe('https://www.google.com/maps/dir/')
+    expect(url.searchParams.get('destination')).toBe(query)
+    expect(url.searchParams.has('origin')).toBe(false)
+    expect([...url.searchParams.keys()]).toEqual(['api', 'destination', 'travelmode', 'dir_action'])
+    expect(url.hash).toBe('')
+    expect(url.href).not.toContain('<script>')
+  })
+
+  it('caps queries and refuses blank destinations, blank explicit origins and invalid coordinates', () => {
+    expect(navigationQuery(`  ${'ক'.repeat(220)}  `)).toHaveLength(200)
+    expect(new URL(navigationUrl('x'.repeat(220))!).searchParams.get('destination')).toHaveLength(200)
+    expect(navigationUrl(' \n ')).toBeNull()
+    expect(navigationUrl('Howrah Station', '   ')).toBeNull()
+    expect(navigationUrl({ lat: Number.NaN, lng: 88 })).toBeNull()
+    expect(navigationUrl({ lat: 91, lng: 88 })).toBeNull()
+  })
+
+  it('uses a mode recommendation only from a fresh planned leg', () => {
+    expect(navigationMode(leg('walk', 10, 14, 800), 'fresh')).toBe('walking')
+    expect(navigationMode(leg('metro', 20, 30, 300), 'fresh')).toBe('transit')
+    expect(navigationMode(leg('road', 25, 40, 150), 'fresh')).toBe('driving')
+    for (const freshness of ['none', 'changed', 'visits-changed'] as const) {
+      expect(navigationMode(leg('road', 25, 40, 150), freshness)).toBe('walking')
+      expect(navigationMode(leg('metro', 20, 30, 300), freshness)).toBe('walking')
+    }
+    expect(navigationMode(undefined, 'fresh')).toBe('walking')
   })
 
   it('accepts only encoded plan hashes for share URLs', () => {
