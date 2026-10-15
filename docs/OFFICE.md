@@ -16,7 +16,11 @@ The office now includes a locally verified **Next-stop and anywhere navigation**
 
 Fresh release execution passed **159/159 unit tests in 8 files** at `2026-10-15T06:35:40.020Z` to `06:35:40.483Z`, the production build, and **10/10 office browser checks** through `06:35:48.737Z`. All **33 planner E2E checks** passed on the unchanged full rerun started `06:38:22.302Z` (60,762.336 ms). The first run's empty-Leaflet-tooltip accessibility failure and successful focused rerun remain recorded in [Navigation Release](RELEASE_CHECKS.md#navigation-release); no assertion or code was changed to obtain the pass.
 
-This feature's public deployment check is next; the existing site is already deployed. The 12-task snapshot retains its first verified release checkpoint unchanged. `fullSuite` uses the completed 159-test receipt, not a handoff or a sum of focused checks. Release documentation will record the new artifact after it exists without rebuilding merely to embed its own SHA.
+**Navigation is now publicly deployed and verified.** Build source `12ee45ebfe3b527b56ab8fe1aa5c19692cfa7e58` produced artifact `a6c90b7fb2302dfcc14a0cc72076eded0ece1bce`; built-in run [38694258417](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/38694258417) succeeded at `2026-10-15T06:45:10.000Z`. All 62 served files matched the reviewed build. Public checks from `06:49:46.786Z` to `06:50:08.283Z` verified navigation at 1440/390/320 pixels, real OSM, no GPS calls or visit changes, and the fresh-controller offline navigation draft.
+
+The visible office loaded the exact **12-task, 159-test, 8-role** snapshot at 1440 and 390 pixels. Navigation search, combined Architecture/Verified filters, empty results and List/Board passed. Offline office navigation served its separate cached shell and the same updated task. The public worker had 60 unique same-origin, project-scoped entries, including the new app bundle and no map tiles. The checked eight public axe states had zero violations; screenshots were inspected with no control overlap identified. These checks used new isolated Chrome contexts, not hidden integrated tabs or the user's accounts.
+
+The snapshot retains its **first verified release checkpoint** unchanged. `fullSuite` uses the completed 159-test receipt, not a handoff or a sum of focused checks. [The navigation deployment receipt](RELEASE_CHECKS.md#navigation-publication) records the current artifact separately. This final documentation update is source-only and does not trigger a second static deployment merely to embed its own SHA.
 
 ## Snapshot Contract
 
@@ -51,6 +55,8 @@ Workbox precaches same-origin HTML, JavaScript, CSS, JSON, manifest, fonts, and 
 The plugin uses `registerType: 'autoUpdate'` with `injectRegister: 'script-defer'`. Explicit `skipWaiting: false` and `clientsClaim: false` retain the normal worker lifecycle. There is no page reload callback. The injected registration script checks for worker updates, but a waiting worker activates only after existing clients close. This prevents an update from interrupting an unsaved route. Recheck the generated worker if upgrading the plugin; its automatic defaults differ for other registration modes.
 
 ## Public Release Checkpoint
+
+This is the historical checkpoint intentionally retained in `office.release`. The navigation artifact and current public verification are recorded above and in [Navigation Publication](RELEASE_CHECKS.md#navigation-publication).
 
 The first built-in Pages run [38653686670](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/38653686670) completed successfully at `2026-10-14T23:23:08.000Z`, publishing artifact `559dbda813354f57043ed4a76d0a7c87b87909a8` built from source `144663c05bf2e0cac75181620a00f7a0ca4fca9e`. The board records those observed values. Subsequent metadata publication carries this prior verified release checkpoint; it does not claim that its own artifact already existed when the board was authored.
 
