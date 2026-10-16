@@ -2,8 +2,9 @@
 
 **PASS: required command gates retained; unfinished production checks completed.**
 
-Checked on **2026-10-17 IST**. Final browser verification ended at
-`2026-10-16T21:27:42.380Z` (**02:57:42 IST**). Receipt timestamps use the actual
+Checked on **2026-10-17 IST**. Local production verification ended at
+`2026-10-16T21:27:42.380Z` (**02:57:42 IST**); public acceptance completed at
+`2026-10-16T21:51:46.278Z` (**03:21:46 IST**). Receipt timestamps use the actual
 clock; only the explicitly labelled 19:00 route-model scenario fixes page time.
 Requested Copilot runtime remains unverified. The QA pass used no fallback,
 subagents, private document access, Git commands or publication. Subsequent
@@ -31,7 +32,9 @@ Exact invocations, reporter flags, timestamps and exit codes are retained in
 Native results: [unit.json](../test-results/street-release/unit.json#L1),
 [e2e.json](../test-results/street-release/e2e.json#L1), and
 [office.json](../test-results/street-release/office.json#L1).
-**These completed suites/build were not rerun.** Default E2E tiles are fixtures.
+These are the original QA executions. Final metadata unit/build/office reruns
+are recorded below; the 63 E2E checks and lint result are retained, not rerun.
+Default E2E tiles are fixtures.
 
 ## Build Payload
 
@@ -39,7 +42,7 @@ The graph is **7,899,330 bytes**, below the **8,388,608-byte per-file cap**.
 Its dist/public SHA-256 matches
 `11331db29f1a13bbe65052f2f95e94597af2f965cb4ba6c6174da119ac794125`.
 The built street worker is **89,326 bytes**; the ODbL companion is **1,760 bytes**.
-The 69 listed precache entries contain six identical duplicate paths: **63 distinct
+In that local QA build, 69 listed precache entries contained six identical duplicate paths: **63 distinct
 files / 9,660,970 bytes**. Every distinct file matched its built SHA-256 and byte
 count in installed CacheStorage and in explicit offline service-worker responses.
 All paths use `/kolkata-puja-guide/`; the worker and all three licence notices
@@ -109,20 +112,93 @@ Non-provider online screenshots use controlled 1px background tiles, not real ma
 Harness-only corrections covered isolation, duplicate manifest accounting, actual
 disclosure wording and native datalist interaction; no application bug was established.
 
-## Publication And Limits
+## Public Deployment
 
-Street publication remains **pending verification** in this pre-publication record.
-The updated 16-task office snapshot uses 218 tests in 10 files from the completed
-local suite; its release object identifies the previous verified navigation
-artifact `a6c90b7fb2302dfcc14a0cc72076eded0ece1bce`, run `38694258417`, deployed
-`2026-10-15T06:45:10.000Z`. It is a checkpoint, not street-publication evidence.
-Prior protected-file verification is retained, not rerun:
-[publication.json](../test-results/street-release/publication.json#L1).
-Future authorized publication must include street source/tests, graph and ODbL
-companion, excluding protected workflow/legacy files and ignored QA artifacts.
-Final metadata validation reruns unit/build/office checks; the completed 63 E2E
-checks are retained without a redundant rerun. No source-data download, broad
-audit or native GPS test is added.
+**PASS: shipped and publicly verified.** [PujaPath](https://arindamchatterjee007.github.io/kolkata-puja-guide/)
+and [the office](https://arindamchatterjee007.github.io/kolkata-puja-guide/office.html)
+serve the reviewed street build.
+
+| Evidence | Actual value |
+| --- | --- |
+| Build source | `1abb23ed11549b03e26c919859294343ecdd398e` |
+| `gh-pages` artifact | `faacbb31ca683650efa98ac271b1a7dc4f054c7e` |
+| Built-in run | [38971497378](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/38971497378), completed / success |
+| Deploy job / run completion | `2026-10-16T21:45:53.000Z` / `21:45:54Z` |
+| Environment deployment | `7130197042`, success, matching artifact and public URL |
+| Source / artifact inventory | 87 source files; 31 explicitly staged owned paths; 65 generated files plus empty `.nojekyll` |
+| Public file check | 65/65 HTTP 200, MIME, byte and SHA-256 matches, `21:46:22.721Z` to `21:46:44.644Z` |
+| Public browser check | Five groups PASS, `21:51:08.911Z` to `21:51:46.278Z`, isolated Chrome 155.0.8059.82 |
+
+The first metadata patch immediately passed **57/57 office unit tests**.
+Final release gates then ran against the updated metadata:
+
+| Command | Fresh result | UTC interval on October 16 |
+| --- | --- | --- |
+| `npm run test:unit` | 218/218, 10 files | `21:40:43.082Z` to `21:40:46.119Z` |
+| `npm run build` | PASS; 69 declarations, 9437.57 KiB | `21:40:46.179Z` to `21:40:49.456Z` |
+| `npm run test:office` | 10/10; source/build board identical | `21:40:49.519Z` to `21:41:01.945Z` |
+
+Public browser acceptance verified:
+
+- Shyambazar to Bagbazar: **32 real road points, eight turn steps, 1,145 m**,
+  named roads and separate 8 m / 49 m snap gaps; no old direct-line route.
+- Actual CSS and PNG sizes **390x844**, **1440x900**, **320x568 Bengali**;
+  18/17/18 checked controls meet 44px bounds, with no horizontal overflow.
+  The legend remains reachable; synthetic guidance and Pause fit above the
+  short-screen fold. Five checked axe states had zero violations.
+- Explicit **19:00 IST model**, not actual current crowds: Kalighat/Ekdalia
+  **2,311 m shortest / 2,462 m quieter**, 64 / 75 geometry points, actual
+  rounded extra **150 m / 3-4 min**, with estimate and safety disclosures.
+- Disconnected BJ removes the old route and reports unavailable, without
+  inventing a connection. No visit, native GPS or external Maps launch occurred.
+- The public office shows the exact **16-task, 218-test, 10-file, 8-role**
+  snapshot at 1440/390px; role/status/search filters, empty results and List/Board
+  work. Requested model assignments remain explicitly runtime-unverified.
+- One bounded real-OSM attempt passed: **2,291 ms** network exposure,
+  **45 successful tile responses / 29 decoded images**, no interception,
+  cache-bypass headers or fallback banner. It is not a provider guarantee.
+
+The final public precache has **63 distinct files / 9,664,067 bytes**, including
+the unchanged graph, worker and three licence notices. All installed-cache hashes
+match the build; there are zero external runtime-cache entries. After explicit
+context/CDP offline and network-route blocking, a new document and new worker
+calculated the identical route. All 63 offline asset fetches matched, an uncached
+network request failed, and no successful network response or HTTP tile fixture
+occurred during the offline interval. GitHub's server was **not** shut down;
+the earlier local server-closed proof remains a separate, stronger local check.
+The offline office served its own 16-task shell. Reconnect preserved the plan
+and unsaved directions edit.
+
+Six representative desktop/mobile/offline/office screenshots were visually
+inspected with no incoherent control overlap identified. Real-map route pixels
+hit 100/100 samples; 390px preview hit 98/100 and Bengali guidance 78/100.
+Non-provider screenshots use controlled 1px backgrounds, not live basemaps.
+The initial public attempt's QA-only pause translation-key typo is retained in
+the local receipt; the corrected observed-button selector and complete rerun
+passed against unchanged production bytes. No application fix was inferred.
+
+Receipts are ignored local-only `test-results/street-release/public*.json` and
+PNG files, not public resources. Root/remotes, regular files, explicit paths,
+8 MiB caps and sensitive-pattern checks passed; pattern scans are not exhaustive
+security guarantees. The source and artifact were pushed normally. Only four
+obsolete owned tracked bundles were removed. The owned artifact worktree was
+removed at `2026-10-16T21:52:18.187Z`; the protected workflow and three legacy
+assets remain untracked with unchanged metadata and no content reads.
+
+The office intentionally retains the **previous** verified navigation artifact
+`a6c90b7fb2302dfcc14a0cc72076eded0ece1bce`, run `38694258417`, deployed
+`2026-10-15T06:45:10.000Z`. This final receipt changes source documentation only;
+it does not rebuild the artifact to include its own hash. No account scopes,
+Pages configuration, active workflow, PWA takeover or OSM caching policy changed.
+
+## Limits
 
 OSM is not live crowd/closure/entrance/access verification; quieter is an estimate,
-not a crowd-free guarantee. Mock GPS does not establish native GPS or field accuracy.
+not a crowd-free guarantee. Endpoint crowds cannot be avoided by this model.
+Mock GPS does not establish native GPS or field accuracy. Native phone/iOS,
+native Bengali and Node 24 source-build acceptance remain unverified. Allow the
+first approximately 8 MB graph download and worker installation online; browser
+storage can be evicted, and offline routing does not provide an offline basemap.
+Requested GPT-6 Astra (Copilot) runtime remains unverified; no fallback or
+subagents were used. No private source PBF/XML, account data or test output was
+published.

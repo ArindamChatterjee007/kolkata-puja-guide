@@ -2,19 +2,41 @@
 
 Review date: 2026-10-17 IST. Street-release UTC timestamps begin on October 16. Earlier navigation and deployment sections retain their original dates. Current office snapshot authored with `new Date().toISOString()`: `2026-10-16T21:35:51.024Z`.
 
-**Street release: local gates PASS; publication verification is recorded separately after deployment.** [STREET_RELEASE.md](STREET_RELEASE.md) is the authoritative street QA record. R1-R4 remain resolved. The previous navigation artifact is a verified checkpoint, not the SHA of the street artifact carrying the office metadata. No fallback, subagents, active workflow or account-permission changes are authorized for this release. Historical pending states, HOLDs, reproductions and fingerprints below describe their dated revisions only.
+**Street release: published and publicly verified, including actual local walking routes and fresh-worker offline recalculation.** [STREET_RELEASE.md](STREET_RELEASE.md#public-deployment) is the authoritative street receipt. R1-R4 remain resolved. The previous navigation artifact is a verified checkpoint, not the SHA of the street artifact carrying the office metadata. No fallback, subagents, active workflow or account-permission changes were used. Historical pending states, HOLDs, reproductions and fingerprints below describe their dated revisions only.
 
 ## Street Release
 
 The implemented feature provides in-app local walking routes on actual OSM road geometry, shortest mapped and lower-estimated-crowd alternatives, named turns, manual endpoint picking and opt-in foreground guidance. Endpoint gaps, disconnected routes, dated data and estimated crowd limits are explicit. Transit and driving continue through the external Maps fallback. The public graph is 7,899,330 bytes; regional source PBF/XML and download headers are never publication assets.
 
-Retained completed gates: **218/218 unit tests in 10 files**, **63/63 E2E checks** (33 planner, 30 street), production build, **10/10 office checks**, and lint exit zero with **19 warnings**. Source integration has not changed since the final E2E pass. Metadata is checked immediately with the 57-test office slice, then the complete unit/build/office gates are rerun before publication. These later commands must not be relabelled as another E2E execution.
+Retained completed gates: **218/218 unit tests in 10 files**, **63/63 E2E checks** (33 planner, 30 street), production build, **10/10 office checks**, and lint exit zero with **19 warnings**. Source integration has not changed since the final E2E pass. The metadata patch immediately passed the 57-test office slice. Final unit/build/office commands freshly passed from `2026-10-16T21:40:43.082Z` through `21:41:01.945Z`; they are not another E2E execution.
 
 The local production proof closed its owned server before reloading and recalculating the 32-point, 8-step Shyambazar/Bagbazar route in a new worker. A separate real-OSM check passed in one bounded attempt. All receipts and screenshots linked under `test-results/` throughout these documents are **ignored local-only evidence**, not files in the public repository or deployed site.
 
 The office's 16 tasks and 218-test result use completed local evidence. Its five-field release object deliberately references the previous verified navigation artifact `a6c90b7fb2302dfcc14a0cc72076eded0ece1bce`, run `38694258417`, deployed `2026-10-15T06:45:10.000Z`. Requested GPT-6 Astra (Copilot) and Fable assignments remain runtime-unverified. Native GPS/iOS, native Bengali acceptance, current annual schedules, live crowds, closures and entrance access remain unverified.
 
 The user-owned untracked workflow and three legacy assets are preserved without publication. The office configuration gate checks only tracked active workflows in an isolated Git checkout, with a filesystem fallback for source archives. No workflow contents, account scopes or Pages settings are changed.
+
+### Street Publication
+
+| Evidence | Actual verified value |
+| --- | --- |
+| Build source | `1abb23ed11549b03e26c919859294343ecdd398e` |
+| Published artifact | `faacbb31ca683650efa98ac271b1a7dc4f054c7e` |
+| Built-in Pages run | [38971497378](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/38971497378), completed / success |
+| Deploy job / run completed | `2026-10-16T21:45:53.000Z` / `21:45:54Z` |
+| Environment deployment | `7130197042`, success, matching artifact and public URL |
+| Reviewed inventory | 87 source files; 31 explicitly staged owned paths; 65 generated files plus empty `.nojekyll` |
+| Public file verification | 65/65 HTTP 200, MIME, bytes and SHA-256 matches; `21:46:22.721Z` to `21:46:44.644Z` |
+| Public browser acceptance | Five groups PASS, Chrome 155.0.8059.82; `21:51:08.911Z` to `21:51:46.278Z` |
+| Real OSM | One attempt, 2,291 ms exposure, 45 successful responses / 29 decoded images; no tile fixtures |
+
+Public checks verified 32 actual geometry points and eight named turn steps from Shyambazar to Bagbazar, 390/1440 English and 320x568 Bengali, 44px checked controls, reachable legend, no horizontal overflow, and synthetic next-turn guidance above the short-screen fold. The labelled 19:00 IST Kalighat/Ekdalia model yielded 2,311 m shortest and 2,462 m quieter routes, an actual rounded extra 150 m / 3-4 min. BJ Block explicitly reported disconnected and removed the old route. Five public axe states had zero violations. Six representative screenshots were visually inspected.
+
+The public worker controlled the exact project scope. All 63 unique precached files (9,664,067 bytes) matched the build, including the graph, worker and licences, with zero external runtime-cache entries. A new offline document and worker recalculated the same route, all 63 offline asset fetches matched, and an uncached network probe failed. No successful network response or tile fixture occurred during the offline interval. GitHub was not shut down: this public proof used context/CDP offline and network blocking, separately from the retained local server-closed proof. Reconnect preserved the plan and unsaved draft. The visible public office and its offline shell showed the actual 16-task, 218-test snapshot and working role filters.
+
+The first public-browser attempt stopped on a QA-only translation-key typo after passing offline checks. Its receipt is retained; using the already observed pause button corrected the harness, not the application. The complete public rerun passed against unchanged source/artifact bytes. A stale local artifact pointer was fast-forwarded normally; Git's bundle rename was checked with explicit old/new path accounting before commit. No forced push, history amendment or workflow publication occurred.
+
+All machine receipts and screenshots are ignored local-only `test-results/street-release/public*` output. The owned artifact worktree was removed at `2026-10-16T21:52:18.187Z`; protected-file metadata remained unchanged, with no protected contents read. This final receipt commit changes source documentation only, not the deployed artifact or board. Exact requested GPT-6 Astra (Copilot) runtime remains unverified; native phone GPS, iOS, native Bengali, live crowds/closures/entrances and Node 24 source-build acceptance remain unverified.
 
 ## Navigation Release
 
