@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { CarFront, ExternalLink, Footprints, Navigation, TrainFront } from 'lucide-react'
-import type { Landmark, Language, Pandal } from '../types'
+import { CarFront, ExternalLink, Footprints, MapPin, Navigation, TrainFront } from 'lucide-react'
+import type { Coordinate, Landmark, Language, Pandal } from '../types'
 import { pickName, t } from '../i18n'
 import { Modal } from './Modal'
 import { Segmented } from './Segmented'
@@ -10,10 +10,12 @@ import type { DirectionsMode } from './uiState'
 export type NavigationDestination =
   | { kind: 'pandal' | 'landmark', id: string }
   | { kind: 'query', query: string }
+  | { kind: 'point', point: Coordinate }
 
 export interface NavigationDraft {
   destination: NavigationDestination
   originId: string
+  originPoint?: Coordinate
   mode: DirectionsMode | null
 }
 
@@ -27,11 +29,13 @@ interface NavigationDialogProps {
   recommendedMode: DirectionsMode | undefined
   online: boolean
   onChange: (draft: NavigationDraft) => void
+  onWalking: (draft: NavigationDraft) => void
+  onPick: (kind: 'origin' | 'destination', draft: NavigationDraft) => void
   onClose: () => void
 }
 
 export function NavigationDialog({
-  language, draft, pandals, startPoints, plannedStart, previousStop, recommendedMode, online, onChange, onClose,
+  language, draft, pandals, startPoints, plannedStart, previousStop, recommendedMode, online, onChange, onWalking, onPick, onClose,
 }: NavigationDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   const open = draft !== null
@@ -63,12 +67,12 @@ export function NavigationDialog({
     ...startPoints.map((point) => ({ kind: 'landmark' as const, point })),
   ]
   const destination = draft?.destination
-  const selectedPlace = destination && destination.kind !== 'query'
+  const selectedPlace = destination && (destination.kind === 'pandal' || destination.kind === 'landmark')
     ? places.find(({ kind, point }) => kind === destination.kind && point.id === destination.id)?.point
     : undefined
   const selectedPandal = destination?.kind === 'pandal' ? pandals.find((point) => point.id === destination.id) : undefined
   const destinationText = destination?.kind === 'query' ? destination.query
-    : selectedPlace ? pickName(language, selectedPlace) : ''
+    : destination?.kind === 'point' ? t(language, 'streetPoint') : selectedPlace ? pickName(language, selectedPlace) : ''
   const publicOrigins = [
     ...(plannedStart ? [{ id: 'planned', point: plannedStart, label: t(language, 'navigationPlannedStart', { name: pickName(language, plannedStart) }) }] : []),
     ...(previousStop ? [{ id: `pandal:${previousStop.id}`, point: previousStop, label: t(language, 'navigationPreviousStop', { name: pickName(language, previousStop) }) }] : []),
@@ -76,14 +80,16 @@ export function NavigationDialog({
       .map(({ kind, point }) => ({ id: `${kind}:${point.id}`, point, label: pickName(language, point) })),
   ]
   const currentLocation = draft?.originId === 'current'
+  const pointOrigin = draft?.originId === 'point' ? draft.originPoint : undefined
   const selectedOrigin = publicOrigins.find((option) => option.id === draft?.originId)
   const mode = draft?.mode ?? recommendedMode ?? 'walking'
-  const url = draft && (currentLocation || selectedOrigin)
-    ? navigationUrl(selectedPlace ?? destinationText, currentLocation ? null : selectedOrigin!.point, mode)
+  const destinationPoint = destination?.kind === 'point' ? destination.point : selectedPlace
+  const url = draft && (currentLocation || selectedOrigin || pointOrigin)
+    ? navigationUrl(destinationPoint ?? destinationText, currentLocation ? null : pointOrigin ?? selectedOrigin!.point, mode)
     : null
   const actionKey = !currentLocation ? 'navigationPreview'
     : mode === 'transit' ? 'navigationTransit'
-      : mode === 'driving' ? 'navigationDriving' : 'navigationWalking'
+      : mode === 'driving' ? 'navigationDriving' : 'streetExternalWalking'
   const action = <><Navigation size={18} aria-hidden="true" /><span>{t(language, actionKey)}</span><ExternalLink size={16} aria-hidden="true" /></>
 
   function changeDestination(value: string) {
@@ -106,11 +112,14 @@ export function NavigationDialog({
               <span className="setting__label">{t(language, 'navigationFrom')}</span>
               <select value={draft.originId} onChange={(event) => onChange({ ...draft, originId: event.target.value })} aria-describedby="navigation-origin-note">
                 <option value="current">{t(language, 'navigationCurrent')}</option>
+                {pointOrigin && <option value="point">{t(language, 'streetPoint')}</option>}
                 {publicOrigins.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </label>
             {selectedOrigin && <p className="navigation__address">{pickName(language, selectedOrigin.point)}{'address' in selectedOrigin.point ? `: ${selectedOrigin.point.address}` : ''}</p>}
-            <p className="hint" id="navigation-origin-note">{t(language, currentLocation ? 'navigationCurrentNote' : 'navigationPreviewNote')}</p>
+            {pointOrigin && <p className="navigation__address">{pointOrigin.lat.toFixed(5)}, {pointOrigin.lng.toFixed(5)}</p>}
+            <button className="btn btn--small btn--quiet" type="button" onClick={() => onPick('origin', draft)}><MapPin size={16} aria-hidden="true" />{t(language, 'streetPickStart')}</button>
+            <p className="hint" id="navigation-origin-note">{t(language, currentLocation ? mode === 'walking' ? 'streetCurrentNote' : 'navigationCurrentNote' : 'navigationPreviewNote')}</p>
           </div>
 
           <div className="setting">
@@ -132,8 +141,9 @@ export function NavigationDialog({
               {places.map(({ kind, point }) => <option key={`${kind}:${point.id}`} value={pickName(language, point)} />)}
             </datalist>
             <p className="navigation__address" aria-live={selectedPlace ? 'polite' : 'off'}>
-              {selectedPandal?.address ?? destinationText.trim()}
+              {destination?.kind === 'point' ? `${destination.point.lat.toFixed(5)}, ${destination.point.lng.toFixed(5)}` : selectedPandal?.address ?? destinationText.trim()}
             </p>
+            <button className="btn btn--small btn--quiet" type="button" onClick={() => onPick('destination', draft)}><MapPin size={16} aria-hidden="true" />{t(language, 'streetPickDestination')}</button>
             {destination?.kind === 'query' && (
               <p className="hint" id="navigation-destination-note">
                 {t(language, destinationText.trim() ? 'navigationSearchQuery' : 'navigationDestinationRequired')}
@@ -156,12 +166,16 @@ export function NavigationDialog({
             {draft.mode === null && recommendedMode && <p className="hint">{t(language, 'navigationPlannedMode')}</p>}
           </div>
 
+          {mode === 'walking' && <div className="navigation__walking">
+            <button className="btn btn--primary btn--block" type="button" disabled={!destinationPoint || (!currentLocation && !selectedOrigin && !pointOrigin)} onClick={() => onWalking(draft)}><Footprints size={20} aria-hidden="true" />{t(language, 'streetShowRoutes')}</button>
+            <p className="hint">{t(language, 'streetLocal')}</p>
+          </div>}
           <div className="setting">
-            <strong className="setting__label">{t(language, 'navigationProvider')}</strong>
+            <strong className="setting__label">{t(language, 'streetExternal')}</strong>
             {url ? (
-              <a className="btn btn--primary btn--block" href={url} target="_blank" rel="noopener noreferrer">{action}</a>
-            ) : <button type="button" className="btn btn--primary btn--block" disabled>{action}</button>}
-            <p className="hint">{t(language, 'navigationProviderNote')}</p>
+              <a className={`btn ${mode === 'walking' ? 'btn--quiet' : 'btn--primary'} btn--block`} data-testid="external-navigation-launch" href={url} target="_blank" rel="noopener noreferrer">{action}</a>
+            ) : <button type="button" className="btn btn--quiet btn--block" disabled>{action}</button>}
+            {mode !== 'walking' && <p className="hint">{t(language, 'navigationProviderNote')}</p>}
           </div>
           <div className="navigation__notes">
             {destination?.kind === 'pandal' && <p className="hint">{t(language, 'navigationApproximate')}</p>}

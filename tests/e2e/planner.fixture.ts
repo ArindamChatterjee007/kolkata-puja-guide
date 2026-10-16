@@ -29,8 +29,9 @@ declare global {
   }
 }
 
-export const test = base.extend<{ browserDiagnostics: void }>({
-  browserDiagnostics: [async ({ context, page }, use, testInfo) => {
+export const test = base.extend<{ browserDiagnostics: void; realStreetTiles: boolean }>({
+  realStreetTiles: [false, { option: true }],
+  browserDiagnostics: [async ({ context, page, realStreetTiles }, use, testInfo) => {
     const pageErrors: string[] = []
     const consoleErrors: string[] = []
     const networkErrors: string[] = []
@@ -63,6 +64,10 @@ export const test = base.extend<{ browserDiagnostics: void }>({
       if (url.origin === ORIGIN && !/(?:^|\/)office(?:[/.]|$)/i.test(url.pathname)) {
         await route.continue()
       } else if (url.origin === 'https://tile.openstreetmap.org' && request.resourceType() === 'image') {
+        if (realStreetTiles) {
+          await route.continue()
+          return
+        }
         stubbedTiles += 1
         await route.fulfill({
           contentType: 'image/png',
@@ -136,7 +141,9 @@ export const test = base.extend<{ browserDiagnostics: void }>({
       contentType: 'application/json',
       body: JSON.stringify({
         pageErrors, consoleErrors, networkErrors, cancelledRequests, forbiddenRequests, stubbedTiles,
-        isolation: 'Fresh context; synthetic navigator APIs; OSM tile fixtures; no external requests sent.',
+        isolation: realStreetTiles
+          ? 'Fresh context; synthetic navigator APIs; only same-origin assets and official OpenStreetMap images permitted externally.'
+          : 'Fresh context; synthetic navigator APIs; OSM tile fixtures; no external requests sent.',
       }, null, 2),
     })
     expect.soft({ pageErrors, consoleErrors, networkErrors, forbiddenRequests }, 'Unexpected browser errors').toEqual({

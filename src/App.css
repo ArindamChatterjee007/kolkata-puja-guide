@@ -173,6 +173,11 @@
   overflow: hidden;
 }
 
+.app[data-layout='split'][data-view='directions'] .map-area {
+  height: 30dvh;
+  min-height: 150px;
+}
+
 .sheet-handle {
   flex: none;
   display: flex;
@@ -1373,6 +1378,8 @@
   background: var(--map-bg);
   /* Height kept clear of pins for the offline/streets notice even before it appears. */
   --map-notice-reserve: 92px;
+  /* Lets the legend/tools adapt to the map's own height (30dvh directions split on short phones). */
+  container-type: size;
 }
 
 .pp-map__canvas {
@@ -1383,6 +1390,11 @@
 
 .pp-map.is-schematic .pp-map__canvas {
   background: #ffffff;
+}
+
+/* Slow tile server: requests stay alive behind the schematic until the layer finishes loading. */
+.pp-map.is-slow .leaflet-tile-pane {
+  visibility: hidden;
 }
 
 .leaflet-container {
@@ -1405,7 +1417,8 @@
   position: absolute;
   top: 10px;
   right: 10px;
-  z-index: 1000;
+  /* Above the overlays column so the Layers toggle can always close an open legend. */
+  z-index: 1001;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1536,6 +1549,11 @@
     display: inline-grid;
   }
 
+  .pp-map__overlays {
+    /* Never extends under the 44px tools column (10px margin + 44px + 20px gap). */
+    max-width: min(300px, calc(100% - 74px));
+  }
+
   .pp-legend.is-collapsed {
     display: none;
   }
@@ -1553,6 +1571,52 @@
   .pp-map__banner .btn {
     position: relative;
     min-width: 36px;
+  }
+}
+
+/* Short maps (e.g. the 30dvh directions split on a 568px phone): the open legend becomes a sheet
+   beside the tools column and above the attribution, so the toggle and attribution stay clear.
+   The zoom control and notice under the sheet are hidden whole rather than half-covered. */
+@container (max-height: 230px) {
+  .pp-map__tools {
+    gap: 4px;
+  }
+
+  .pp-map__overlays {
+    top: 10px;
+    right: 64px;
+    bottom: 24px;
+    left: 10px;
+    max-width: none;
+    justify-content: flex-end;
+  }
+
+  .pp-map__banner {
+    margin-left: 54px;
+  }
+
+  .pp-map__banner-note {
+    display: none;
+  }
+
+  .pp-legend:not(.is-collapsed) {
+    flex: 0 1 auto;
+    width: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    align-content: flex-start;
+    gap: 3px 10px;
+    padding: 5px 8px;
+    background: #ffffff;
+    box-shadow: var(--shadow);
+  }
+
+  .pp-map:has(.pp-legend:not(.is-collapsed)) .leaflet-control-zoom {
+    visibility: hidden;
+  }
+
+  .pp-map:has(.pp-legend:not(.is-collapsed)) .pp-map__banner {
+    display: none;
   }
 }
 
@@ -1791,6 +1855,89 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.navigation__walking {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.tabs:has(#tab-directions) .tabs__tab {
+  min-width: 0;
+  gap: 4px;
+  padding: 6px 4px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.tabs:has(#tab-directions) .tabs__count { display: none; }
+.tabs__tab svg { flex: none; }
+.directions { gap: 12px; min-width: 0; }
+.directions svg { flex: none; }
+.directions .btn { white-space: normal; min-height: 44px; overflow-wrap: anywhere; }
+.directions .segmented__item { min-width: 0; min-height: 48px; flex: 1; padding: 6px; white-space: normal; }
+.directions__header { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; gap: 4px; align-items: start; }
+.directions__places { min-width: 0; overflow-wrap: anywhere; }
+.directions__places > span { color: var(--muted); font-size: 12px; }
+.directions__places h2 { margin: 4px 0 0; font-size: 18px; line-height: 1.35; font-weight: 600; }
+.directions__places h2:focus-visible, .directions__turn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.directions__pick { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.directions__pick .btn { font-size: 12px; padding: 6px; text-align: start; }
+.directions__summary { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 12px; padding: 12px 0; border-block: 1px solid var(--line); }
+.directions__strategy { grid-column: 1 / -1; color: #14664d; font-size: 13px; font-weight: 600; }
+.directions__summary > strong { font-size: 26px; line-height: 1.25; }
+.directions__summary small, .directions__extra { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.directions__loading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 60px; padding-block: 12px; }
+.directions__loading small { color: var(--muted); }
+.directions__turn { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 6px 10px; background: #eef7f2; border-left: 3px solid #14664d; padding: 12px; color: #144a38; overflow-wrap: anywhere; }
+.directions__turn--controls { grid-template-columns: 28px minmax(0, 1fr) 44px; }
+.directions__turn--controls .directions__follow-state { grid-column: 1 / 3; }
+.directions__pause { grid-column: 3; grid-row: 1 / 3; }
+.directions__turn.is-uncertain { background: #fff5e7; border-color: #8f5d0a; color: #704a0c; }
+.directions__follow-state { grid-column: 1 / -1; font-size: 12px; font-weight: 600; }
+.directions__turn > div { display: flex; flex-direction: column; gap: 2px; }
+.directions__turn p, .directions__turn > small { grid-column: 1 / -1; font-size: 13px; }
+.directions__gap-note { font-weight: 600; }
+.directions__steps { list-style: none; padding: 0; margin: 0; }
+.directions__step { display: grid; width: 100%; min-height: 64px; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 12px 4px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; text-align: start; color: var(--ink); }
+/* Short junction hops (<20 m) stay as real steps but take one compact line. */
+.directions__step.is-short { min-height: 44px; padding-block: 6px; align-items: center; }
+.directions__step.is-short strong, .directions__step.is-short .directions__road { display: inline; }
+.directions__step.is-short .directions__road::before { content: ' · '; color: var(--muted); }
+.directions__step:hover, .directions__step.is-selected { background: #eef7f2; }
+.directions__step[aria-current='step'] { border-left: 3px solid #14664d; padding-left: 8px; }
+.directions__step > span { min-width: 0; overflow-wrap: anywhere; }
+.directions__step strong, .directions__road, .directions__step small { display: block; }
+.directions__step strong { font-size: 14px; font-weight: 600; }
+.directions__road { font-size: 13px; color: var(--ink-2); }
+.directions__distance { font-size: 12px; color: var(--muted); padding-top: 2px; }
+.directions__gaps { display: grid; gap: 6px; padding-block: 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.directions__source { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.directions__source summary { display: list-item; cursor: pointer; min-height: 44px; padding-block: 12px; color: var(--ink-2); font-weight: 500; }
+.directions__source p { margin-bottom: 10px; }
+.directions__source a { display: block; min-height: 44px; padding-block: 12px; }
+.directions__external { font-size: 13px; }
+.pp-map.is-picking .leaflet-container { cursor: crosshair; }
+.pp-map.is-picking .leaflet-marker-pane, .pp-map.is-picking .leaflet-overlay-pane,
+.pp-map.is-picking .leaflet-marker-pane *, .pp-map.is-picking .leaflet-overlay-pane * { pointer-events: none; }
+.pp-map.is-picking .pp-map__overlays { display: none; }
+.pp-map__picker { position: absolute; z-index: 600; bottom: 24px; left: 12px; right: 12px; max-width: 420px; display: grid; gap: 8px; padding: 12px; background: #ffffff; color: var(--ink); border: 2px solid #14664d; border-radius: 6px; box-shadow: 0 2px 8px #0002; }
+.pp-map__picker > span { font-size: 13px; overflow-wrap: anywhere; }
+.pp-map__picker > div { display: flex; gap: 8px; justify-content: flex-end; }
+.pp-map__picker .btn { min-height: 44px; min-width: 0; white-space: normal; }
+.pp-legend__line--street { border-top-style: solid; border-color: #14664d; }
+.pp-legend__line--alt { border-top-style: solid; border-color: rgba(119, 45, 99, 0.45); }
+.pp-legend__snap, .pp-legend__approx, .pp-legend__hotspot { width: 14px; height: 14px; flex: none; border-radius: 50%; background: #14664d; border: 2px solid #ffffff; }
+.pp-legend__approx { background: #ffffff; border: 2px dashed #595b60; }
+.pp-legend__hotspot { background: #ead9e5; border: 1px solid #772d63; }
+
+@media (max-width: 359px) {
+  .directions { gap: 8px; }
+  .directions__places h2 { font-size: 16px; }
+  .directions__summary { padding-block: 8px; }
+  .directions__turn { padding: 8px; gap: 4px 8px; }
 }
 
 .detail {

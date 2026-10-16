@@ -27,7 +27,7 @@ export const pwaOptions = {
   },
   workbox: {
     globPatterns: ['**/*.{html,js,css,json,webmanifest,woff,woff2,ttf,otf,png,jpg,jpeg,webp,avif,gif,svg,ico,md}'],
-    maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+    maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
     navigateFallback: 'index.html',
     navigateFallbackDenylist: [/\/office\.html(?:\?.*)?$/],
     cleanupOutdatedCaches: true,

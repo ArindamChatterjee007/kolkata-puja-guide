@@ -10,7 +10,15 @@ Architecture and design review are complete to the scoped local evidence in [REL
 
 Candidate coverage is 33/33 sourced entries, 24 metro nodes, 8 start points, and 4 example routes. This describes the source-backed catalogue, not a verified current 2026 festival timetable. The planner interface is owned by the UI workstream; its integrated review must not be inferred from office checks.
 
-## Navigation Update
+## Street Navigation Update
+
+The current snapshot adds four locally verified tasks: street routing, in-app walking guidance, responsive street directions, and the licensed local street dataset. The completed full suite passed **218 tests in 10 files** at `2026-10-16T20:55:50.718Z`, including 34 engine, 25 navigation and 57 office tests. The separate **63 E2E checks** comprise 33 planner and 30 street checks with real graph data and controlled background tiles; build and 10 office checks also passed. Lint exited zero with 19 warnings. [STREET_RELEASE.md](STREET_RELEASE.md) records local production, offline and bounded real-map evidence; its ignored receipts are local-only.
+
+The **16-task** board distinguishes this local test basis from public deployment. Its release object retains the previous publicly verified navigation artifact `a6c90b7fb2302dfcc14a0cc72076eded0ece1bce`, run [38694258417](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/38694258417), completed `2026-10-15T06:45:10.000Z`. That is a historical checkpoint, not the street artifact carrying the board. Requested Fable/Astra assignments remain unverified runtime labels, not agent identities or evidence of parallel execution.
+
+The approximately 8 MB graph, street worker and ODbL notice are included in the same-origin precache under an 8 MiB per-file cap. First online installation and retained storage are required. Routing may work without a basemap; external OSM tiles are never precached. Native phone GPS, Bengali-language acceptance, current crowds, closures, entrances and annual schedules remain unverified.
+
+## Navigation Update (Historical)
 
 The office now includes a locally verified **Next-stop and anywhere navigation** task under Architecture, with the related Design report referencing its accessibility review. It covers current-location and public-origin directions, encoded bilingual typed destinations, fresh-plan recommendations, open-dialog offline drafts and no automatic GPS or visit mutation. The accepted independent review remains handoff evidence, not exact model-runtime certification.
 
@@ -20,15 +28,15 @@ Fresh release execution passed **159/159 unit tests in 8 files** at `2026-10-15T
 
 The visible office loaded the exact **12-task, 159-test, 8-role** snapshot at 1440 and 390 pixels. Navigation search, combined Architecture/Verified filters, empty results and List/Board passed. Offline office navigation served its separate cached shell and the same updated task. The public worker had 60 unique same-origin, project-scoped entries, including the new app bundle and no map tiles. The checked eight public axe states had zero violations; screenshots were inspected with no control overlap identified. These checks used new isolated Chrome contexts, not hidden integrated tabs or the user's accounts.
 
-The snapshot retains its **first verified release checkpoint** unchanged. `fullSuite` uses the completed 159-test receipt, not a handoff or a sum of focused checks. [The navigation deployment receipt](RELEASE_CHECKS.md#navigation-publication) records the current artifact separately. This final documentation update is source-only and does not trigger a second static deployment merely to embed its own SHA.
+At that historical release, the snapshot retained its **first verified release checkpoint** unchanged. Its `fullSuite` used the completed 159-test receipt, not a handoff or a sum of focused checks. [The navigation deployment receipt](RELEASE_CHECKS.md#navigation-publication) records that artifact separately. The street snapshot above supersedes these counts and advances the retained checkpoint to this verified navigation release.
 
 ## Snapshot Contract
 
 The schema version is 1. IDs must be unique stable slugs. Each task refers to a defined role and one of `backlog`, `in-progress`, `review`, `verified`, or `blocked`. A verified task must have at least one evidence link; a link is supporting evidence, not an automatic test execution or reviewer signature. Every task's summary must distinguish handoff results from locally executed checks.
 
-`snapshotAt` is a real ISO timestamp captured with `new Date().toISOString()` when the snapshot is authored or updated. It is not refreshed just because a page is opened. The current value is `2026-10-15T06:40:03.924Z`. Statistics are derived from task records, not invented percentages.
+`snapshotAt` is a real ISO timestamp captured with `new Date().toISOString()` when the snapshot is authored or updated. It is not refreshed just because a page is opened. The current value is `2026-10-16T21:35:51.024Z`. Statistics are derived from task records, not invented percentages.
 
-Publication is a discriminated contract: `publication: "pending"` requires `release: null`; `publication: "deployed"` requires exactly five release fields. The current board is deployed and records the first verified release checkpoint. Unsupported runtime attribution and top-level/task commit fields are still rejected.
+Publication is a discriminated contract: `publication: "pending"` requires `release: null`; `publication: "deployed"` requires exactly five release fields. The current board is deployed and records the previous verified navigation release checkpoint, not a street-publication claim. Unsupported runtime attribution and top-level/task commit fields are still rejected.
 
 | Release field | Required value or validation |
 | --- | --- |
@@ -56,7 +64,7 @@ The plugin uses `registerType: 'autoUpdate'` with `injectRegister: 'script-defer
 
 ## Public Release Checkpoint
 
-This is the historical checkpoint intentionally retained in `office.release`. The navigation artifact and current public verification are recorded above and in [Navigation Publication](RELEASE_CHECKS.md#navigation-publication).
+This is the first historical checkpoint. The street board now retains the later verified navigation checkpoint identified above and in [Navigation Publication](RELEASE_CHECKS.md#navigation-publication); it does not rewrite this earlier history.
 
 The first built-in Pages run [38653686670](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/38653686670) completed successfully at `2026-10-14T23:23:08.000Z`, publishing artifact `559dbda813354f57043ed4a76d0a7c87b87909a8` built from source `144663c05bf2e0cac75181620a00f7a0ca4fca9e`. The board records those observed values. Subsequent metadata publication carries this prior verified release checkpoint; it does not claim that its own artifact already existed when the board was authored.
 
@@ -103,7 +111,7 @@ The following initial-platform record is superseded by the current verification 
 1. The parent must verify the built-in Pages run/environment deployment from `gh-pages` at `/` for the approved repository and check the actual public planner, office, assets, manifest and offline project path. Repository approval or a successful push alone is insufficient.
 2. Obtain the real 40-hex artifact commit, numeric Actions run URL and deployment timestamp from that evidence; retain the source `main` SHA separately. The initial pending/null state ends only after live-browser sign-off and the metadata update. The current board has reached that verified checkpoint; browser/unit fixture values are never release evidence.
 3. Use a scoped patch on [board.json](../public/office/board.json): set `publication` to `deployed`, supply the exact five-field `release` object from the table, capture a new `snapshotAt` with `new Date().toISOString()`, and update the `public-release` task to `verified` with a factual summary and documentation evidence. Record the observed deployment and live checks in [RELEASE_CHECKS.md](RELEASE_CHECKS.md).
-4. Rerun `npm run test:unit`, `npm run build` and `npm run test:office`, then publish the updated static artifact through the same owned branch-publishing path. The referenced commit must be the artifact commit actually evidenced by the named run; a later source/metadata commit is not automatically that deployment. Keep the first release checkpoint stable, and record the metadata artifact's later SHA/run in documentation after it exists. No third artifact rebuild is needed merely to include its own receipt. The office renders the new status without an HTML/code edit; recheck the published record after updating it.
+4. Rerun `npm run test:unit`, `npm run build` and `npm run test:office`, then publish the updated static artifact through the same owned branch-publishing path. The referenced commit must be the artifact commit actually evidenced by the named run; a later source/metadata commit is not automatically that deployment. Retain a previously verified checkpoint, and record the metadata artifact's later SHA/run in documentation after it exists. No third artifact rebuild is needed merely to include its own receipt. The office renders the new status without an HTML/code edit; recheck the published record after updating it.
 
 The earlier office-only pass performed no Git or account actions. The separately authorized deployment recovery and its observed results are recorded in [RELEASE_CHECKS.md](RELEASE_CHECKS.md#deployment-recovery).
 

@@ -1,4 +1,7 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { evidenceHref, filterTasks, parseBoard, taskCounts, TASK_STATUSES } from '../../src/office'
 import viteConfig, { pwaOptions } from '../../vite.config'
@@ -181,14 +184,21 @@ describe('Pages and offline configuration', () => {
     expect(viteConfig.server?.fs?.allow).toEqual([new URL('../../', import.meta.url).pathname])
   })
 
-  it('builds both project-relative pages and keeps custom Actions opt-in', () => {
+  it('builds both project-relative pages and keeps custom Actions opt-in in published source', () => {
     expect(viteConfig.base).toBe('./')
     expect(viteConfig.build?.rolldownOptions?.input).toEqual({
       main: new URL('../../index.html', import.meta.url).pathname,
       office: new URL('../../office.html', import.meta.url).pathname,
     })
     const workflows = new URL('../../.github/workflows/', import.meta.url)
-    expect(existsSync(workflows) ? readdirSync(workflows) : []).toEqual([])
+    const root = resolve(fileURLToPath(new URL('../../', import.meta.url)))
+    if (existsSync(new URL('../../.git', import.meta.url))) {
+      const options = { cwd: root, encoding: 'utf8' as const }
+      expect(execFileSync('git', ['rev-parse', '--show-toplevel'], options).trim()).toBe(root)
+      expect(execFileSync('git', ['ls-files', '--', '.github/workflows/'], options).trim()).toBe('')
+    } else {
+      expect(existsSync(workflows) ? readdirSync(workflows) : []).toEqual([])
+    }
     const example = readFileSync(new URL('../../docs/github-pages-actions.example.yml', import.meta.url), 'utf8')
     expect(example).toContain('path: dist')
     expect(example).toContain("node-version: '24'")

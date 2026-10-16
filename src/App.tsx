@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Compass, List, Map as MapIcon, Route } from 'lucide-react'
+import { ChevronDown, ChevronUp, Compass, Footprints, List, Map as MapIcon, Route } from 'lucide-react'
 import type { Coordinate, CrowdLevel, Language, NamedCoordinate, Zone } from './types'
 import { CURATED_ROUTES, METRO_STATIONS, PANDALS, START_POINTS } from './data/pandals'
 import type { CuratedRoute } from './data/pandals'
@@ -7,20 +7,26 @@ import { advanceCheckIn, CHECKIN_LIMITS, createCheckInState } from './domain/che
 import type { CheckInState, CheckInStatus } from './domain/checkin'
 import { haversineMetres } from './domain/geo'
 import { planRoute } from './domain/route'
+import { streetRouteProgress } from './domain/streets'
+import type { StreetEndpoint, StreetProgress, StreetStrategy } from './domain/streets'
 import { decodeSharedPlan, encodeSharedPlan } from './domain/storage'
 import type { SavedPlan } from './domain/storage'
 import { formatNumber, pickName, t } from './i18n'
 import type { MessageKey } from './i18n'
 import { useGeolocation } from './hooks/useGeolocation'
+import { useStreetNavigation } from './hooks/useStreetNavigation'
 import type { LocationErrorKind } from './hooks/useGeolocation'
 import { useMediaQuery } from './hooks/useMediaQuery'
-import { useNow } from './hooks/useNow'
+import { useIntervalNow, useNow } from './hooks/useNow'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { usePlanStore } from './hooks/usePlanStore'
 import { useToasts } from './hooks/useToasts'
 import { AppHeader } from './components/AppHeader'
 import { ExploreTab } from './components/ExploreTab'
 import { RouteTab } from './components/RouteTab'
+import { DirectionsPanel } from './components/DirectionsPanel'
+import { isStreetPoint, needsLocationWatch, streetCrowdSnapshot, streetCrowdStale, streetFixIssue } from './components/streetNavigation'
+import type { StreetCrowdSnapshot } from './components/streetNavigation'
 import { MapView } from './components/MapView'
 import type { MapFocusRequest, RouteSegment } from './components/MapView'
 import { PandalDialog } from './components/PandalDialog'
@@ -31,7 +37,7 @@ import type { ConfirmRequest } from './components/Dialogs'
 import { Toasts } from './components/Toasts'
 import {
   applyOptimizedOrder, buildShareUrl, departureOptions, nextPendingStopId, orderKey, planFreshness,
-  reportsKey, resolveDeparture, settingsKey, visitedKey, navigationMode,
+  reportsKey, resolveDeparture, settingsKey, visitedKey, navigationMode, navigationUrl,
 } from './components/uiState'
 import type { PlanSettings, PlanSnapshot, SortMode } from './components/uiState'
 import './App.css'
@@ -43,9 +49,24 @@ const DEFAULT_START_ID = START_IDS.includes('start-blue-esplanade') ? 'start-blu
 const CURATED_DEFAULT = CURATED_ROUTES[0]
 const AGED_PLAN_MS = 45 * 60_000
 
-type Tab = 'explore' | 'route'
+type Tab = 'explore' | 'route' | 'directions'
 type MobileLayout = 'split' | 'map' | 'list'
 type AutoStatusKind = CheckInStatus | 'suppressed' | 'inaccurate'
+
+type WalkingPlace = StreetEndpoint & { name: string; nameBn?: string }
+interface WalkingContext {
+  origin: WalkingPlace
+  destination: WalkingPlace
+  crowd: StreetCrowdSnapshot
+  departure: string
+}
+interface MapPickDraft {
+  kind: 'origin' | 'destination'
+  draft: NavigationDraft
+  point: Coordinate | null
+  source: 'dialog' | 'directions'
+  layout: MobileLayout
+}
 
 const locationErrorKeys: Record<LocationErrorKind, MessageKey> = {
   denied: 'locDenied', unavailable: 'locUnavailable', timeout: 'locTimeout',
@@ -66,7 +87,9 @@ export default function App() {
   const online = useOnlineStatus()
   const wide = useMediaQuery('(min-width: 760px)')
   const now = useNow(60_000)
+  const guidanceNow = useIntervalNow(5_000)
   const geo = useGeolocation()
+  const street = useStreetNavigation()
   const toasts = useToasts()
 
   const [tab, setTab] = useState<Tab>(() => (plan.stopIds.length > 0 ? 'route' : 'explore'))
@@ -74,6 +97,16 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
   const [navigation, setNavigation] = useState<NavigationDraft | null>(null)
+  const [walkingDraft, setWalkingDraft] = useState<NavigationDraft | null>(null)
+  const [walkingContext, setWalkingContext] = useState<WalkingContext | null>(null)
+  const [walkingIssue, setWalkingIssue] = useState<MessageKey | null>(null)
+  const [walkingLocating, setWalkingLocating] = useState(false)
+  const [streetStrategy, setStreetStrategy] = useState<StreetStrategy>('shortest')
+  const [following, setFollowing] = useState(false)
+  const [foreground, setForeground] = useState(() => document.visibilityState === 'visible')
+  const [walkingProgress, setWalkingProgress] = useState<StreetProgress | null>(null)
+  const [selectedStep, setSelectedStep] = useState<number | null>(null)
+  const [mapPick, setMapPick] = useState<MapPickDraft | null>(null)
   const [query, setQuery] = useState('')
   const [zone, setZone] = useState<Zone | 'all'>('all')
   const [sort, setSort] = useState<SortMode>('zone')
@@ -94,6 +127,11 @@ export default function App() {
   const checkInState = useRef<CheckInState>(createCheckInState())
   const suppressedAutoId = useRef<string | null>(null)
   const sharedHandled = useRef(false)
+  const walkingIntent = useRef(0)
+  const acceptedMetres = useRef(0)
+  const lastFollowedAt = useRef<number | null>(null)
+  const latestWalkingSettings = useRef({ reports: plan.reports, departure })
+  latestWalkingSettings.current = { reports: plan.reports, departure }
 
   const stops = plan.stopIds.map((id) => PANDAL_BY_ID.get(id)).filter((pandal) => pandal !== undefined)
   const visitedIds = new Set(plan.visits.map((visit) => visit.pandalId))
@@ -119,6 +157,17 @@ export default function App() {
   const navigationPrevious = navigationIndex > 0 ? PANDAL_BY_ID.get(plan.stopIds[navigationIndex - 1]) : undefined
   const navigationLeg = freshness === 'fresh' && !aged && navigationStopId
     ? snapshot?.plan.stops.find((stop) => stop.pandalId === navigationStopId)?.leg : undefined
+  const streetResult = walkingContext && street.state.status === 'ready' && street.state.result.status === 'ok' ? street.state.result : null
+  const selectedStreetRoute = streetResult ? streetStrategy === 'quieter' && streetResult.alternativesDiffer ? streetResult.quieter : streetResult.shortest : null
+  const currentCrowd = streetCrowdSnapshot(PANDALS, plan.reports, now)
+  const walkingStale = walkingContext !== null && (streetCrowdStale(walkingContext.crowd, currentCrowd.key, now) || walkingContext.departure !== departure)
+  const walkingDestination = walkingDraft ? resolveWalkingDestination(walkingDraft) : null
+  const walkingOrigin = walkingDraft ? resolvePublicWalkingOrigin(walkingDraft) : null
+  const walkingFallback = walkingDraft ? navigationUrl(
+    walkingDestination ?? (walkingDraft.destination.kind === 'query' ? walkingDraft.destination.query : ''),
+    walkingDraft.originId === 'current' ? null : walkingOrigin,
+    'walking',
+  ) : null
 
   const segments: RouteSegment[] = (() => {
     if (snapshot && freshness !== 'changed') {
@@ -138,10 +187,10 @@ export default function App() {
     setFocus({ nonce: focusNonce.current, kind: 'point', point })
   }
 
-  function focusBounds(points: Coordinate[]) {
+  function focusBounds(points: Coordinate[], maxZoom = 15) {
     if (points.length === 0) return
     focusNonce.current += 1
-    setFocus({ nonce: focusNonce.current, kind: 'bounds', points })
+    setFocus({ nonce: focusNonce.current, kind: 'bounds', points, maxZoom })
   }
 
   const receiveSharedLink = useEffectEvent((hash: string) => {
@@ -182,10 +231,47 @@ export default function App() {
     const resetDwell = () => {
       checkInState.current = createCheckInState()
       setAutoStatusKind(null)
+      setForeground(document.visibilityState === 'visible')
     }
     document.addEventListener('visibilitychange', resetDwell)
     return () => document.removeEventListener('visibilitychange', resetDwell)
   }, [])
+
+  useEffect(() => {
+    if (needsLocationWatch(journeyActive, autoCheckIn, following)) geo.startWatch()
+    else geo.stopWatch()
+  }, [journeyActive, autoCheckIn, following, geo.startWatch, geo.stopWatch])
+
+  useEffect(() => {
+    if (street.state.status === 'loading' && walkingContext && walkingStale) {
+      const crowd = streetCrowdSnapshot(PANDALS, plan.reports, Date.now())
+      setWalkingContext({ ...walkingContext, crowd, departure })
+      street.request({ origin: walkingContext.origin, destination: walkingContext.destination, hotspots: crowd.hotspots })
+    }
+  }, [currentCrowd.key, departure, walkingStale, walkingContext, street.state.status, street.request, plan.reports])
+
+  useEffect(() => {
+    if (street.state.status === 'error' || (street.state.status === 'ready' && street.state.result.status === 'unavailable')) setFollowing(false)
+    if (streetResult && selectedStreetRoute) focusBounds(selectedStreetRoute.geometry, 17)
+  }, [street.state, selectedStreetRoute])
+
+  useEffect(() => {
+    if (!following || !foreground || !selectedStreetRoute) return
+    const sample = geo.position
+    if (!sample || geo.status === 'error') {
+      setWalkingProgress((previous) => previous ? { ...previous, status: 'uncertain' } : null)
+      return
+    }
+    const fixIssue = streetFixIssue(sample, Date.now())
+    const accuracy = fixIssue === 'stale' || fixIssue === 'inaccurate' ? 61 : sample.accuracyMetres
+    const progress = streetRouteProgress(selectedStreetRoute, sample, acceptedMetres.current, accuracy)
+    if (progress.status === 'on-route' || progress.status === 'arrived') acceptedMetres.current = progress.alongMetres
+    setWalkingProgress(progress)
+    if (!fixIssue && tab === 'directions' && lastFollowedAt.current !== sample.at) {
+      lastFollowedAt.current = sample.at
+      focusPoint(sample)
+    }
+  }, [following, foreground, geo.position, geo.status, guidanceNow, selectedStreetRoute, tab])
 
   // Evaluates only when a new device sample arrives; other values are read fresh at that moment.
   useEffect(() => {
@@ -273,6 +359,117 @@ export default function App() {
     })
   }
 
+  function resolveWalkingDestination(draft: NavigationDraft): WalkingPlace | null {
+    const destination = draft.destination
+    if (destination.kind === 'query') return null
+    if (destination.kind === 'point') return { ...destination.point, name: t('en', 'streetPoint'), nameBn: t('bn', 'streetPoint') }
+    return (destination.kind === 'pandal' ? PANDAL_BY_ID.get(destination.id) : START_POINTS.find((point) => point.id === destination.id)) ?? null
+  }
+
+  function resolvePublicWalkingOrigin(draft: NavigationDraft): WalkingPlace | null {
+    if (draft.originId === 'point' && draft.originPoint) return { ...draft.originPoint, name: t('en', 'streetPoint'), nameBn: t('bn', 'streetPoint') }
+    if (draft.originId === 'planned') return landmark
+    const [kind, id] = draft.originId.split(':')
+    return (kind === 'pandal' ? PANDAL_BY_ID.get(id) : kind === 'landmark' ? START_POINTS.find((point) => point.id === id) : null) ?? null
+  }
+
+  function clearWalkingProgress() {
+    acceptedMetres.current = 0
+    lastFollowedAt.current = null
+    setWalkingProgress(null)
+    setSelectedStep(null)
+  }
+
+  function changeNavigation(draft: NavigationDraft) {
+    setNavigation(draft)
+  }
+
+  async function calculateWalking(draft: NavigationDraft, keepStrategy = false) {
+    const intent = ++walkingIntent.current
+    street.invalidate()
+    setWalkingDraft({ ...draft, mode: 'walking' })
+    setWalkingContext(null)
+    setWalkingIssue(null)
+    setWalkingLocating(false)
+    setFollowing(keepStrategy && following)
+    clearWalkingProgress()
+    if (!keepStrategy) setStreetStrategy('shortest')
+    setNavigation(null)
+    setTab('directions')
+    if (!wide) setMobileLayout('split')
+    const destination = resolveWalkingDestination(draft)
+    if (!destination) {
+      setWalkingIssue('streetUnknown')
+      setFollowing(false)
+      return
+    }
+    let start = resolvePublicWalkingOrigin(draft)
+    if (draft.originId === 'current') {
+      setWalkingLocating(true)
+      const sample = geo.position && streetFixIssue(geo.position, Date.now()) === null ? geo.position : await geo.locateOnce()
+      if (intent !== walkingIntent.current) return
+      setWalkingLocating(false)
+      if (!sample) {
+        setWalkingIssue('streetLocationFailed')
+        setFollowing(false)
+        return
+      }
+      const issue = streetFixIssue(sample, Date.now())
+      if (issue) {
+        setWalkingIssue(issue === 'inaccurate' ? 'streetPoorFix' : issue === 'stale' ? 'streetStaleFix' : 'streetOutside')
+        setFollowing(false)
+        return
+      }
+      start = { lat: sample.lat, lng: sample.lng, name: t('en', 'yourLocation'), nameBn: t('bn', 'yourLocation') }
+    }
+    if (!start) {
+      setWalkingIssue('streetLocationFailed')
+      setFollowing(false)
+      return
+    }
+    const latest = latestWalkingSettings.current
+    const crowd = streetCrowdSnapshot(PANDALS, latest.reports, Date.now())
+    setWalkingContext({ origin: start, destination, crowd, departure: latest.departure })
+    street.request({ origin: { lat: start.lat, lng: start.lng, id: start.id }, destination: { lat: destination.lat, lng: destination.lng, id: destination.id }, hotspots: crowd.hotspots })
+  }
+
+  function closeDirections() {
+    walkingIntent.current += 1
+    street.invalidate()
+    setWalkingDraft(null)
+    setWalkingContext(null)
+    setWalkingIssue(null)
+    setWalkingLocating(false)
+    setFollowing(false)
+    setMapPick(null)
+    clearWalkingProgress()
+    setTab(plan.stopIds.length ? 'route' : 'explore')
+  }
+
+  function beginMapPick(kind: 'origin' | 'destination', draft: NavigationDraft, source: MapPickDraft['source']) {
+    setNavigation(null)
+    setMapPick({ kind, draft, point: null, source, layout: mobileLayout })
+    if (!wide) setMobileLayout('map')
+  }
+
+  function cancelMapPick() {
+    if (!mapPick) return
+    if (mapPick.source === 'dialog') setNavigation(mapPick.draft)
+    setMobileLayout(mapPick.layout)
+    setMapPick(null)
+  }
+
+  function confirmMapPick() {
+    if (!mapPick?.point || !isStreetPoint(mapPick.point)) return
+    const draft: NavigationDraft = mapPick.kind === 'origin'
+      ? { ...mapPick.draft, originId: 'point', originPoint: mapPick.point }
+      : { ...mapPick.draft, destination: { kind: 'point', point: mapPick.point } }
+    setMobileLayout(mapPick.layout)
+    setMapPick(null)
+    if (mapPick.source === 'dialog') changeNavigation(draft)
+    else void calculateWalking(draft, true)
+  }
+
   function optimize() {
     if (stops.length === 0) return
     const departureTimestamp = resolveDeparture(departure, Date.now())
@@ -349,6 +546,7 @@ export default function App() {
   }
 
   function forgetLocation() {
+    closeDirections()
     geo.forget()
     setOriginMode('landmark')
     setAutoCheckIn(false)
@@ -360,13 +558,11 @@ export default function App() {
     setJourneyActive(true)
     checkInState.current = createCheckInState()
     setAutoStatusKind(null)
-    if (autoCheckIn) geo.startWatch()
     setTab('route')
   }
 
   function stopJourney() {
     setJourneyActive(false)
-    geo.stopWatch()
     checkInState.current = createCheckInState()
     setAutoStatusKind(null)
   }
@@ -376,8 +572,6 @@ export default function App() {
     suppressedAutoId.current = null
     checkInState.current = createCheckInState()
     setAutoStatusKind(null)
-    if (enabled && journeyActive) geo.startWatch()
-    if (!enabled) geo.stopWatch()
   }
 
   function report(id: string, level: CrowdLevel) {
@@ -417,6 +611,7 @@ export default function App() {
       confirmLabel: t(language, 'clearConfirm'),
       danger: true,
       onConfirm: () => {
+        closeDirections()
         dispatch({ type: 'clearAll' })
         geo.forget()
         setOriginMode('landmark')
@@ -470,12 +665,13 @@ export default function App() {
   const tabs: { id: Tab, label: string, icon: typeof Compass }[] = [
     { id: 'explore', label: t(language, 'tabExplore'), icon: Compass },
     { id: 'route', label: t(language, 'tabRoute'), icon: Route },
+    ...(walkingDraft ? [{ id: 'directions' as const, label: t(language, 'streetDirections'), icon: Footprints }] : []),
   ]
 
   const layout = wide ? 'wide' : mobileLayout
 
   return (
-    <div className="app" data-layout={layout}>
+    <div className="app" data-layout={layout} data-view={tab}>
       <a className="skip-link" href="#planner">{t(language, 'skipToPlanner')}</a>
       <a className="skip-link" href="#map">{t(language, 'skipToMap')}</a>
       <AppHeader
@@ -528,7 +724,8 @@ export default function App() {
                     onKeyDown={(event) => {
                       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
                         event.preventDefault()
-                        const next = item.id === 'explore' ? 'route' : 'explore'
+                        const index = tabs.findIndex((candidate) => candidate.id === item.id)
+                        const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length].id
                         setTab(next)
                         document.getElementById(`tab-${next}`)?.focus()
                       }
@@ -587,6 +784,36 @@ export default function App() {
                   onToggleStop={toggleStop}
                   onOpenDetails={setDetailId}
                   onShowOnMap={showOnMap}
+                />
+              ) : tab === 'directions' && walkingDraft ? (
+                <DirectionsPanel
+                  language={language}
+                  originName={walkingContext ? pickName(language, walkingContext.origin) : walkingOrigin ? pickName(language, walkingOrigin) : t(language, 'navigationCurrent')}
+                  destinationName={walkingDestination ? pickName(language, walkingDestination) : walkingDraft.destination.kind === 'query' ? walkingDraft.destination.query : t(language, 'navigationTo')}
+                  state={street.state}
+                  locating={walkingLocating}
+                  issue={walkingIssue}
+                  strategy={streetStrategy}
+                  pace={plan.pace}
+                  stale={walkingStale}
+                  crowdAt={walkingContext?.crowd.createdAt ?? null}
+                  progress={walkingProgress}
+                  following={following}
+                  visible={foreground}
+                  locationError={geo.status === 'error' && geo.error ? t(language, geo.error === 'outside' ? 'streetOutside' : locationErrorKeys[geo.error]) : null}
+                  selectedStep={selectedStep}
+                  fallbackUrl={walkingFallback}
+                  onStrategy={(strategy) => { setStreetStrategy(strategy); clearWalkingProgress() }}
+                  onFollow={() => { setFollowing(true); lastFollowedAt.current = null }}
+                  onPause={() => setFollowing(false)}
+                  onClose={closeDirections}
+                  onEdit={() => setNavigation(walkingDraft)}
+                  onPick={(kind) => beginMapPick(kind, walkingDraft, 'directions')}
+                  onRecalculate={(fromHere) => void calculateWalking(fromHere ? { ...walkingDraft, originId: 'current', originPoint: undefined } : walkingDraft, true)}
+                  onStep={(index) => {
+                    const step = selectedStreetRoute?.steps[index]
+                    if (step) { setSelectedStep(index); focusPoint(step.at) }
+                  }}
                 />
               ) : (
                 <RouteTab
@@ -648,9 +875,25 @@ export default function App() {
             visitedIds={visitedIds}
             selectedId={selectedId}
             nextStopId={journeyActive ? nextStopId : null}
-            origin={usingDevice ? null : origin}
+            origin={usingDevice || tab === 'directions' ? null : origin}
             devicePosition={geo.position}
-            segments={segments}
+            segments={tab === 'directions' ? [] : segments}
+            directions={tab === 'directions' && streetResult && selectedStreetRoute && walkingContext ? {
+              route: selectedStreetRoute,
+              alternative: streetResult.alternativesDiffer ? streetStrategy === 'shortest' ? streetResult.quieter : streetResult.shortest : null,
+              origin: walkingContext.origin,
+              destination: walkingContext.destination,
+              originSnap: streetResult.originSnap.coordinate,
+              destinationSnap: streetResult.destinationSnap.coordinate,
+              selectedStep,
+              hotspots: walkingContext.crowd.hotspots.filter((hotspot) => hotspot.id !== walkingContext.origin.id && hotspot.id !== walkingContext.destination.id
+                && selectedStreetRoute.geometry.some((point) => haversineMetres(point, hotspot) <= (hotspot.radiusMetres ?? 180) + 100)),
+            } : null}
+            picking={mapPick?.kind ?? null}
+            pickedPoint={mapPick?.point ?? null}
+            onPickPoint={(point) => setMapPick((previous) => previous ? { ...previous, point } : null)}
+            onCancelPick={cancelMapPick}
+            onConfirmPick={confirmMapPick}
             metroStations={METRO_STATIONS}
             focus={focus}
             online={online}
@@ -660,7 +903,7 @@ export default function App() {
             onNavigate={openNavigation}
             onToggleStop={toggleStop}
             onLocate={() => void locateDevice()}
-            onFitRoute={() => focusBounds([origin, ...stops])}
+            onFitRoute={() => focusBounds(tab === 'directions' && selectedStreetRoute ? selectedStreetRoute.geometry : [origin, ...stops], tab === 'directions' ? 17 : 15)}
           />
         </main>
       </div>
@@ -690,7 +933,9 @@ export default function App() {
         previousStop={navigationPrevious}
         recommendedMode={navigationLeg ? navigationMode(navigationLeg, 'fresh') : undefined}
         online={online}
-        onChange={setNavigation}
+        onChange={changeNavigation}
+        onWalking={(draft) => void calculateWalking(draft)}
+        onPick={(kind, draft) => beginMapPick(kind, draft, 'dialog')}
         onClose={() => setNavigation(null)}
       />
       <InfoDialog language={language} open={infoOpen} onClose={() => setInfoOpen(false)} onRequestClear={requestClearDevice} />
