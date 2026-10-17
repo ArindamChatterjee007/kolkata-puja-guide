@@ -1,0 +1,752 @@
+{
+  "version": 1,
+  "generatedAt": "2026-10-17T10:33:05.872Z",
+  "generator": "scripts/build-pandal-previews.mjs",
+  "source": {
+    "imageData": "data/kolkata-walking.json",
+    "bytes": 7899330,
+    "sha256": "11331db29f1a13bbe65052f2f95e94597af2f965cb4ba6c6174da119ac794125",
+    "snapshotAt": "2026-10-14T20:21:12Z",
+    "fetchedAt": "2026-10-15T07:33:52.168Z",
+    "attribution": "OpenStreetMap contributors",
+    "sourceUrl": "https://www.openstreetmap.org/copyright",
+    "license": "ODbL-1.0",
+    "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/"
+  },
+  "projection": "Local equirectangular; north up; radius is the centre-to-corner distance",
+  "style": {
+    "width": 720,
+    "height": 480,
+    "radiusMetres": 600,
+    "scaleMetres": 100
+  },
+  "notice": "Area overview, not pandal appearance. Approximate pin, not a verified entrance. No live access or route claim.",
+  "assets": {
+    "bagbazar": {
+      "image": "images/pandals/bagbazar-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.6047,
+        "lng": 88.36613
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.601706880906637,
+        "north": 22.607693119093366,
+        "west": 88.36126671763842,
+        "east": 88.37099328236158
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 199,
+      "geometryPoints": 564,
+      "bytes": 32618,
+      "sha256": "941abb07dfef1056ef0849dbb250e42c0d4bc0aadcff68d685a4066d844a890f"
+    },
+    "kumartuli-park": {
+      "image": "images/pandals/kumartuli-park-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.59903,
+        "lng": 88.36149
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.596036880906635,
+        "north": 22.602023119093364,
+        "west": 88.35662691798656,
+        "east": 88.36635308201345
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 315,
+      "geometryPoints": 901,
+      "bytes": 45750,
+      "sha256": "96d954807dbaa13e260f5fac7e063242a849580ebc0676f4a45938b2bbfb4839"
+    },
+    "sovabazar-rajbari": {
+      "image": "images/pandals/sovabazar-rajbari-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.59683,
+        "lng": 88.36719
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.593836880906636,
+        "north": 22.599823119093365,
+        "west": 88.36232699570577,
+        "east": 88.37205300429422
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 389,
+      "geometryPoints": 1106,
+      "bytes": 53462,
+      "sha256": "e6b146d8c2f1f6ca3fac4ba8059ec68d11fc805687b616eeaf0ada545e8d2454"
+    },
+    "tala-prattoy": {
+      "image": "images/pandals/tala-prattoy-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.60892,
+        "lng": 88.38227
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.605926880906637,
+        "north": 22.611913119093366,
+        "west": 88.37740656848408,
+        "east": 88.38713343151593
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 108,
+      "geometryPoints": 445,
+      "bytes": 26392,
+      "sha256": "7044f115a6bea24a63f10efd03eb9aa7baef0a1f4d57b1e42d1d104e6bb909b0"
+    },
+    "ahiritola": {
+      "image": "images/pandals/ahiritola-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.59459,
+        "lng": 88.35705
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.591596880906636,
+        "north": 22.597583119093365,
+        "west": 88.35218707482817,
+        "east": 88.36191292517184
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 300,
+      "geometryPoints": 903,
+      "bytes": 46426,
+      "sha256": "6f533c440e3e11d226e0fbbeb182ddb8b65143c008814235e99961cb98b0266f"
+    },
+    "sreebhumi": {
+      "image": "images/pandals/sreebhumi-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.6004,
+        "lng": 88.4026
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.597406880906636,
+        "north": 22.603393119093365,
+        "west": 88.39773686958381,
+        "east": 88.4074631304162
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 335,
+      "geometryPoints": 1098,
+      "bytes": 47508,
+      "sha256": "32e7a22cd3d5a720c9ada41267a4a5d1272aa9a9739932967949cad952c4dc76"
+    },
+    "college-square": {
+      "image": "images/pandals/college-square-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.57453,
+        "lng": 88.36446
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.571536880906635,
+        "north": 22.577523119093364,
+        "west": 88.35959778295133,
+        "east": 88.36932221704866
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 318,
+      "geometryPoints": 913,
+      "bytes": 39270,
+      "sha256": "01c170b796cb58371bbfcf2e2d0cd3022827bb1d51450b52cbb8eec60c7a1d97"
+    },
+    "md-ali-park": {
+      "image": "images/pandals/md-ali-park-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.57724,
+        "lng": 88.36074
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.574246880906635,
+        "north": 22.580233119093364,
+        "west": 88.3558776873345,
+        "east": 88.36560231266552
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 316,
+      "geometryPoints": 854,
+      "bytes": 46044,
+      "sha256": "0accc345c89e04d2579adadf4cc04080cc688c9885118e9aeecbbc47cee6174c"
+    },
+    "santosh-mitra-square": {
+      "image": "images/pandals/santosh-mitra-square-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.56593,
+        "lng": 88.36544
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.562936880906637,
+        "north": 22.568923119093366,
+        "west": 88.36057808628789,
+        "east": 88.37030191371213
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 374,
+      "geometryPoints": 1115,
+      "bytes": 49730,
+      "sha256": "f717299b7dbddbfc5cc0a280831784e3d51020a2a16fb8ec14c1b2493f32546e"
+    },
+    "chaltabagan": {
+      "image": "images/pandals/chaltabagan-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.58518,
+        "lng": 88.37208
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.582186880906637,
+        "north": 22.588173119093366,
+        "west": 88.36721740710348,
+        "east": 88.37694259289651
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 416,
+      "geometryPoints": 1195,
+      "bytes": 52096,
+      "sha256": "5c74fe44d6d1f8f7edaab1344107f7e6adea0e5f9d6ee8a08e4510a75484fa4c"
+    },
+    "ekdalia-evergreen": {
+      "image": "images/pandals/ekdalia-evergreen-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.52125,
+        "lng": 88.36596
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.518256880906634,
+        "north": 22.524243119093363,
+        "west": 88.36109965985638,
+        "east": 88.37082034014362
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 286,
+      "geometryPoints": 1128,
+      "bytes": 37382,
+      "sha256": "e0ab386a25890d290dfedddb0d2bbab80e4463d83afb7a4e9721854946286563"
+    },
+    "singhi-park": {
+      "image": "images/pandals/singhi-park-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.52122,
+        "lng": 88.36301
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.518226880906635,
+        "north": 22.524213119093364,
+        "west": 88.35814966091161,
+        "east": 88.3678703390884
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 264,
+      "geometryPoints": 1027,
+      "bytes": 35560,
+      "sha256": "fce46fb316bc316fb01ba0213bc78f94c34271d749be67aeab463a43ee7c6397"
+    },
+    "deshapriya-park": {
+      "image": "images/pandals/deshapriya-park-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.5184,
+        "lng": 88.35352
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.515406880906635,
+        "north": 22.521393119093364,
+        "west": 88.34865976009466,
+        "east": 88.35838023990534
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 342,
+      "geometryPoints": 1082,
+      "bytes": 46916,
+      "sha256": "1fe7f50517a0ddde762643509b72075d7a43efa768e1576921a145c35e80ed73"
+    },
+    "ballygunge-cultural": {
+      "image": "images/pandals/ballygunge-cultural-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.51588,
+        "lng": 88.35582
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.512886880906635,
+        "north": 22.518873119093364,
+        "west": 88.35095984871293,
+        "east": 88.36068015128706
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 239,
+      "geometryPoints": 692,
+      "bytes": 40162,
+      "sha256": "7d1a1b21f8200a3d07fe599a2e0bbf8902c108746c4986a5fd6d18d5f81ca076"
+    },
+    "samaj-sebi": {
+      "image": "images/pandals/samaj-sebi-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.51474,
+        "lng": 88.356
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://www.pujomap.com/p/samaj-sebi-sangha",
+      "bounds": {
+        "south": 22.511746880906635,
+        "north": 22.517733119093364,
+        "west": 88.351139888798,
+        "east": 88.36086011120199
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 204,
+      "geometryPoints": 681,
+      "bytes": 37602,
+      "sha256": "2e15b1005337a705a991ca2c6bbfc8bf2c7c003a61f6dd6e5e65513919d43f44"
+    },
+    "tridhara": {
+      "image": "images/pandals/tridhara-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.51958,
+        "lng": 88.35535
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.516586880906637,
+        "north": 22.522573119093366,
+        "west": 88.35048971859446,
+        "east": 88.36021028140554
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 360,
+      "geometryPoints": 1137,
+      "bytes": 46064,
+      "sha256": "e9560c2b64ca4ffc11680d8744bd1498955f8b12b3b77e831c696d891d930e89"
+    },
+    "hindustan-park": {
+      "image": "images/pandals/hindustan-park-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.51787,
+        "lng": 88.36209
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.514876880906634,
+        "north": 22.520863119093363,
+        "west": 88.35722977873367,
+        "east": 88.36695022126632
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 332,
+      "geometryPoints": 1137,
+      "bytes": 45004,
+      "sha256": "b2ba1d3dd77b4d18792a24c9fdcc11e63d910f4ab582c7c8fb8f1837c8d02992"
+    },
+    "66-pally": {
+      "image": "images/pandals/66-pally-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.51824,
+        "lng": 88.34286
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.515246880906634,
+        "north": 22.521233119093363,
+        "west": 88.33799976572159,
+        "east": 88.34772023427841
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 465,
+      "geometryPoints": 1675,
+      "bytes": 48584,
+      "sha256": "51e9d8873b14fd3506a40c449bb91737470b40539f9ef7d7de64bc59883babd6"
+    },
+    "badamtala-ashar-sangha": {
+      "image": "images/pandals/badamtala-ashar-sangha-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.51793,
+        "lng": 88.34416
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.514936880906635,
+        "north": 22.520923119093364,
+        "west": 88.33929977662363,
+        "east": 88.34902022337637
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 437,
+      "geometryPoints": 1570,
+      "bytes": 47280,
+      "sha256": "d78e6dbdacc9f3524ee96f318ded4ec81de52c4f34030cf02bdb31cc6936c986"
+    },
+    "mudiali": {
+      "image": "images/pandals/mudiali-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.51007,
+        "lng": 88.34663
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.507076880906634,
+        "north": 22.513063119093363,
+        "west": 88.34177005297919,
+        "east": 88.35148994702082
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 184,
+      "geometryPoints": 700,
+      "bytes": 27932,
+      "sha256": "ef100f6c5362bebd78d67a0f4939629e5b0fffa192bc0c0ddf003dea15f3aa42"
+    },
+    "shib-mandir": {
+      "image": "images/pandals/shib-mandir-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.51106,
+        "lng": 88.35002
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.508066880906636,
+        "north": 22.514053119093365,
+        "west": 88.3451600181778,
+        "east": 88.35487998182221
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 146,
+      "geometryPoints": 559,
+      "bytes": 29000,
+      "sha256": "97b3204737cda6773ad231fcdc8a6e924cebe0a395247b374c89adb7eca3c132"
+    },
+    "suruchi-sangha": {
+      "image": "images/pandals/suruchi-sangha-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.5091,
+        "lng": 88.33418
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.506106880906636,
+        "north": 22.512093119093365,
+        "west": 88.32932008707562,
+        "east": 88.33903991292439
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 212,
+      "geometryPoints": 785,
+      "bytes": 29208,
+      "sha256": "216b3a7cb88a5469ddebc72a2084a9bfe10fdc04a778621607d21a022a723c21"
+    },
+    "chetla-agrani": {
+      "image": "images/pandals/chetla-agrani-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.51643,
+        "lng": 88.33719
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.513436880906635,
+        "north": 22.519423119093364,
+        "west": 88.33232982937274,
+        "east": 88.34205017062727
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 452,
+      "geometryPoints": 1656,
+      "bytes": 42928,
+      "sha256": "3d3e2b2ee6c27fc22814e28f7381e2af7f25cd68a0e092d85a23faba13cf53aa"
+    },
+    "naktala-udayan": {
+      "image": "images/pandals/naktala-udayan-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.47435,
+        "lng": 88.36653
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.471356880906637,
+        "north": 22.477343119093366,
+        "west": 88.36167130733745,
+        "east": 88.37138869266255
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 312,
+      "geometryPoints": 1264,
+      "bytes": 46090,
+      "sha256": "9f60595c38f566745a60dd6e9b929177dfb193aef00ecc76aac7796c9e3ef42a"
+    },
+    "bosepukur-sitala-mandir": {
+      "image": "images/pandals/bosepukur-sitala-mandir-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.51917,
+        "lng": 88.38475
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.516176880906634,
+        "north": 22.522163119093364,
+        "west": 88.37988973301432,
+        "east": 88.38961026698567
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 393,
+      "geometryPoints": 1457,
+      "bytes": 45602,
+      "sha256": "2d6d7c9ed0b4e14c4231f974844ff707fdf67bb65f3c26dd704584d1380fef60"
+    },
+    "barisha-club": {
+      "image": "images/pandals/barisha-club-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.48071,
+        "lng": 88.31295
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.477716880906634,
+        "north": 22.483703119093363,
+        "west": 88.30809108418264,
+        "east": 88.31780891581737
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 279,
+      "geometryPoints": 1176,
+      "bytes": 41310,
+      "sha256": "20e303f2bf4c6209be3d11fd2bc687e84777bbbba3d4c8fabce539f2b4a5cc6d"
+    },
+    "behala-notun-dal": {
+      "image": "images/pandals/behala-notun-dal-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.49629,
+        "lng": 88.31765
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.493296880906634,
+        "north": 22.499283119093363,
+        "west": 88.31279053718384,
+        "east": 88.32250946281616
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 307,
+      "geometryPoints": 1121,
+      "bytes": 42706,
+      "sha256": "e084e1a3c1f00b14716209efac88188d427d90cf7e4aabc40aa47715ef3fd5c0"
+    },
+    "behala-friends": {
+      "image": "images/pandals/behala-friends-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.50135,
+        "lng": 88.32021
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.498356880906634,
+        "north": 22.504343119093363,
+        "west": 88.31535035942832,
+        "east": 88.32506964057168
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 290,
+      "geometryPoints": 1248,
+      "bytes": 43286,
+      "sha256": "64ea71835fee7f549b35b6d3390d04d027906c896b7f890a5deb6a4d798c705d"
+    },
+    "sb-park": {
+      "image": "images/pandals/sb-park-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.46776,
+        "lng": 88.30901
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://www.pujomap.com/p/thakurpukur-sb-park-sarbojanin",
+      "bounds": {
+        "south": 22.464766880906634,
+        "north": 22.470753119093363,
+        "west": 88.30415153847757,
+        "east": 88.31386846152243
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 307,
+      "geometryPoints": 1253,
+      "bytes": 42892,
+      "sha256": "e41a559bb3ba6106a5f521e688bb28546291b15c7798f0a92d84883ee9d64f63"
+    },
+    "salt-lake-fd-block": {
+      "image": "images/pandals/salt-lake-fd-block-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.58393,
+        "lng": 88.41208
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.580936880906634,
+        "north": 22.586923119093363,
+        "west": 88.4072174512288,
+        "east": 88.4169425487712
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 175,
+      "geometryPoints": 612,
+      "bytes": 37246,
+      "sha256": "aa323601fa51f5492ae643620a3e5f8e919db4472424e8a05c21a77183d1632a"
+    },
+    "salt-lake-ak-block": {
+      "image": "images/pandals/salt-lake-ak-block-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.588639,
+        "lng": 88.431252
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://pujorshohor.in/pandals/salt-lake-ak-block-sarbojanin",
+      "bounds": {
+        "south": 22.585645880906636,
+        "north": 22.591632119093365,
+        "west": 88.4263892849837,
+        "east": 88.4361147150163
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 321,
+      "geometryPoints": 1023,
+      "bytes": 48596,
+      "sha256": "548a9f8e7804ec21041c07dd75919807dac98d66ceadee0222cc3ffbab48934d"
+    },
+    "salt-lake-bj-block": {
+      "image": "images/pandals/salt-lake-bj-block-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.59066,
+        "lng": 88.4266
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.587666880906635,
+        "north": 22.593653119093364,
+        "west": 88.42173721362137,
+        "east": 88.43146278637862
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 339,
+      "geometryPoints": 854,
+      "bytes": 52384,
+      "sha256": "b3ed3c745a5ada1780878588a7d3fa2486c27ee380474a375e8172b23198909f"
+    },
+    "new-town-sarbojanin": {
+      "image": "images/pandals/new-town-sarbojanin-area.webp",
+      "width": 720,
+      "height": 480,
+      "centre": {
+        "lat": 22.58227,
+        "lng": 88.45885
+      },
+      "coordinateAccuracy": "approximate",
+      "coordinateSourceUrl": "https://kolkatakhoj.com/pandals/",
+      "bounds": {
+        "south": 22.579276880906637,
+        "north": 22.585263119093366,
+        "west": 88.45398750982238,
+        "east": 88.46371249017761
+      },
+      "metresPerPixel": 1.3867504905630728,
+      "sourceEdges": 146,
+      "geometryPoints": 570,
+      "bytes": 32398,
+      "sha256": "819996fbfb4349ea2ddc83ee1854ab94b315a05616f056e547cd984fb69f7e72"
+    }
+  }
+}

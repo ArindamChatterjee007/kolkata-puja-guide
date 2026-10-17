@@ -9,7 +9,9 @@ import type { Coordinate, Language, MetroStation, NamedCoordinate, Pandal } from
 import type { TravelMode } from '../domain/travel'
 import type { StreetHotspot, StreetRoute } from '../domain/streets'
 import type { DevicePosition } from '../hooks/useGeolocation'
+import { PANDAL_MEDIA } from '../data/pandalMedia'
 import { formatNumber, otherName, pickName, t, zoneLabel } from '../i18n'
+import { PandalPreview } from './PandalPreview'
 import { HOOGHLY_LABEL, HOOGHLY_POLYGON, PLANNING_RECTANGLE } from './schematic'
 import { isStreetPoint } from './streetNavigation'
 
@@ -368,11 +370,14 @@ export function MapView(props: MapViewProps) {
           const alternate = otherName(language, pandal)
           const inRoute = index !== undefined
           const popup = (
-            <Popup className="pp-popup" closeButton>
+            <Popup className="pp-popup" closeButton autoPanPaddingTopLeft={[5, 10]} autoPanPaddingBottomRight={[64, 28]}>
               <div className="pp-popup__body">
-                <strong>{name}</strong>
-                {alternate && <span className="pp-popup__alt">{alternate}</span>}
-                <span className="pp-popup__zone">{zoneLabel(language, pandal.zone)}</span>
+                <PandalPreview language={language} media={PANDAL_MEDIA[pandal.id]} variant="popup" />
+                <div className="pp-popup__text">
+                  <strong>{name}</strong>
+                  {alternate && <span className="pp-popup__alt">{alternate}</span>}
+                  <span className="pp-popup__zone">{zoneLabel(language, pandal.zone)}</span>
+                </div>
                 <div className="pp-popup__actions">
                   <button type="button" className="icon-btn" onClick={() => onNavigate(pandal.id)} title={t(language, 'navigateTo', { name })} aria-label={t(language, 'navigateTo', { name })}>
                     <Navigation size={18} aria-hidden="true" />

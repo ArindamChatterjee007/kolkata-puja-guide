@@ -29,29 +29,46 @@ declare global {
   }
 }
 
-export const test = base.extend<{ browserDiagnostics: void; realStreetTiles: boolean }>({
+export const test = base.extend<{
+  browserDiagnostics: void
+  realStreetTiles: boolean
+  autoSkipFestivalIntro: boolean
+  expectedResourceFailures: RegExp | null
+}>({
   realStreetTiles: [false, { option: true }],
-  browserDiagnostics: [async ({ context, page, realStreetTiles }, use, testInfo) => {
+  // Legacy flows dismiss the festival intro through its real Skip button; fake clocks would otherwise freeze it.
+  autoSkipFestivalIntro: [true, { option: true }],
+  expectedResourceFailures: [null, { option: true }],
+  browserDiagnostics: [async ({ context, page, realStreetTiles, autoSkipFestivalIntro, expectedResourceFailures }, use, testInfo) => {
     const pageErrors: string[] = []
     const consoleErrors: string[] = []
     const networkErrors: string[] = []
     const cancelledRequests: string[] = []
     const forbiddenRequests: string[] = []
+    const toleratedFailures: string[] = []
     let stubbedTiles = 0
+    let introSkips = 0
     const publicPath = (raw: string) => {
       const url = new URL(raw)
       return `${url.origin}${url.pathname}`
     }
+    const tolerated = (...texts: string[]) => expectedResourceFailures !== null && texts.some((text) => expectedResourceFailures.test(text))
     page.on('pageerror', (error) => pageErrors.push(error.message))
     page.on('console', (message) => {
-      if (message.type() === 'error') consoleErrors.push(message.text())
+      if (message.type() !== 'error') return
+      if (tolerated(message.text(), message.location().url ?? '')) toleratedFailures.push(`console ${message.text()}`)
+      else consoleErrors.push(message.text())
     })
     page.on('response', (response) => {
-      if (response.status() >= 400) networkErrors.push(`${response.status()} ${publicPath(response.url())}`)
+      if (response.status() < 400) return
+      const entry = `${response.status()} ${publicPath(response.url())}`
+      if (tolerated(entry)) toleratedFailures.push(entry)
+      else networkErrors.push(entry)
     })
     page.on('requestfailed', (request) => {
       const message = `${request.failure()?.errorText} ${publicPath(request.url())}`
       if (request.failure()?.errorText === 'net::ERR_ABORTED') cancelledRequests.push(message)
+      else if (tolerated(message)) toleratedFailures.push(message)
       else networkErrors.push(message)
     })
     page.on('dialog', async (dialog) => {
@@ -78,6 +95,14 @@ export const test = base.extend<{ browserDiagnostics: void; realStreetTiles: boo
         await route.abort('blockedbyclient')
       }
     })
+    if (autoSkipFestivalIntro) {
+      const skip = page.locator('dialog.festival-intro[open] .festival-intro__skip')
+      await page.addLocatorHandler(skip, async () => {
+        introSkips += 1
+        await skip.click()
+        await page.mouse.move(0, 0)
+      })
+    }
     await context.addInitScript(() => {
       const state: BrowserControls = {
         once: 0, started: 0, cleared: 0, denied: false, visible: 'visible', online: true,
@@ -140,7 +165,8 @@ export const test = base.extend<{ browserDiagnostics: void; realStreetTiles: boo
     await testInfo.attach('browser-diagnostics', {
       contentType: 'application/json',
       body: JSON.stringify({
-        pageErrors, consoleErrors, networkErrors, cancelledRequests, forbiddenRequests, stubbedTiles,
+        pageErrors, consoleErrors, networkErrors, cancelledRequests, forbiddenRequests, toleratedFailures, stubbedTiles,
+        introSkips, autoSkipFestivalIntro,
         isolation: realStreetTiles
           ? 'Fresh context; synthetic navigator APIs; only same-origin assets and official OpenStreetMap images permitted externally.'
           : 'Fresh context; synthetic navigator APIs; OSM tile fixtures; no external requests sent.',

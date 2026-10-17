@@ -716,10 +716,10 @@ async function toggleAutoCheckIn(page: Page, enabled: boolean) {
 
 test('auto check-in rejects poor accuracy and hidden time before a continuous foreground dwell', async ({ page }) => {
   await page.clock.install({ time: FIXED_TIME })
+  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1_000))
   await seedPlan(page)
   await page.goto('/')
   await expect(page.getByRole('button', { name: 'Start journey', exact: true })).toBeVisible()
-  await page.clock.pauseAt(new Date(FIXED_TIME.getTime() + 1_000))
   await page.getByRole('button', { name: 'Start journey', exact: true }).click()
   expect(await geoCalls(page)).toEqual({ once: 0, started: 0, active: 0 })
   await toggleAutoCheckIn(page, true)
@@ -785,10 +785,10 @@ test('auto check-in rejects poor accuracy and hidden time before a continuous fo
 
 test('crowd reports expire after two hours in the UI and persistent storage', async ({ page }) => {
   await page.clock.install({ time: FIXED_TIME })
+  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1_000))
   await seedPlan(page)
   await page.goto('/')
   await expect(page.locator('.stop-list > li')).toHaveCount(2)
-  await page.clock.pauseAt(new Date(FIXED_TIME.getTime() + 1_000))
   await page.locator('.stop-list').getByRole('button', { name: 'Bagbazar Sarbojanin', exact: true }).click()
   const detail = page.getByRole('dialog', { name: 'Bagbazar Sarbojanin', exact: true })
   await expect(detail.getByText('Typical pattern for this hour (IST), not a live observation')).toBeVisible()

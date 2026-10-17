@@ -34,6 +34,7 @@ import { NavigationDialog } from './components/NavigationDialog'
 import type { NavigationDraft } from './components/NavigationDialog'
 import { ConfirmDialog, InfoDialog, ShareDialog } from './components/Dialogs'
 import type { ConfirmRequest } from './components/Dialogs'
+import { FestivalIntro } from './components/FestivalIntro'
 import { Toasts } from './components/Toasts'
 import {
   applyOptimizedOrder, buildShareUrl, departureOptions, nextPendingStopId, orderKey, planFreshness,
@@ -123,6 +124,8 @@ export default function App() {
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
   const [focus, setFocus] = useState<MapFocusRequest | null>(null)
+  // One opening per real App mount: replays only on a full page load, never on re-render.
+  const [introOpen, setIntroOpen] = useState(true)
   const focusNonce = useRef(0)
   const checkInState = useRef<CheckInState>(createCheckInState())
   const suppressedAutoId = useRef<string | null>(null)
@@ -672,6 +675,7 @@ export default function App() {
 
   return (
     <div className="app" data-layout={layout} data-view={tab}>
+      <FestivalIntro language={language} open={introOpen} onClose={() => setIntroOpen(false)} />
       <a className="skip-link" href="#planner">{t(language, 'skipToPlanner')}</a>
       <a className="skip-link" href="#map">{t(language, 'skipToMap')}</a>
       <AppHeader

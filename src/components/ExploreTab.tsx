@@ -1,10 +1,13 @@
 import { MapPin, Minus, Plus, Search, X } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import type { Coordinate, CrowdReport, Language, Pandal, Zone } from '../types'
 import { estimateCrowd } from '../domain/crowd'
 import { CATALOGUE_NOTICE } from '../data/pandals'
 import type { CuratedRoute } from '../data/pandals'
+import { PANDAL_MEDIA } from '../data/pandalMedia'
 import type { Landmark } from '../types'
 import { crowdLabel, formatNumber, otherName, pickName, t, zoneLabel } from '../i18n'
+import { PandalPreview } from './PandalPreview'
 import { matchesPandal, sortPandals } from './uiState'
 import type { SortMode } from './uiState'
 
@@ -93,7 +96,7 @@ export function ExploreTab(props: ExploreTabProps) {
           <div className="routes__head">
             <figure className="strip">
               <img
-                src="/images/puja-kolkata.webp"
+                src={`${import.meta.env.BASE_URL}images/puja-kolkata.webp`}
                 width={720}
                 height={960}
                 alt={t(language, 'photoCaption')}
@@ -152,15 +155,25 @@ export function ExploreTab(props: ExploreTabProps) {
           <p className="empty">{t(language, 'noResults')}</p>
         ) : (
           <ul className="pandal-list">
-            {filtered.map((pandal) => {
+            {filtered.map((pandal, index) => {
               const inRoute = stopIds.includes(pandal.id)
               const name = pickName(language, pandal)
               const report = reports.find((item) => item.pandalId === pandal.id)
               const crowd = estimateCrowd(pandal, now, report)
+              const details = t(language, 'detailsFor', { name })
               return (
-                <li key={pandal.id} className={`pandal-row${selectedId === pandal.id ? ' is-selected' : ''}`}>
+                <li
+                  key={pandal.id}
+                  className={`pandal-row${selectedId === pandal.id ? ' is-selected' : ''}`}
+                  data-pandal={pandal.id}
+                  style={{ '--stagger': `${Math.min(index, 8) * 20}ms` } as CSSProperties}
+                >
+                  {/* Pointer shortcut only: the title button is the keyboard and screen-reader route to details. */}
+                  <button type="button" className="pandal-row__thumb" tabIndex={-1} onClick={() => onOpenDetails(pandal.id)} aria-label={details} title={details}>
+                    <PandalPreview language={language} media={PANDAL_MEDIA[pandal.id]} variant="thumb" />
+                  </button>
                   <div className="pandal-row__main">
-                    <button type="button" className="link-title" onClick={() => onOpenDetails(pandal.id)} title={t(language, 'detailsFor', { name })}>
+                    <button type="button" className="link-title" onClick={() => onOpenDetails(pandal.id)} title={details}>
                       {name}
                     </button>
                     <div className="pandal-row__meta">

@@ -937,13 +937,20 @@
 }
 
 .pandal-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 8px 10px 12px;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  grid-template-areas:
+    'thumb main'
+    'thumb actions';
+  column-gap: 10px;
+  row-gap: 4px;
+  align-items: start;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #ffffff;
+  animation: preview-rise 180ms ease-out both;
+  animation-delay: var(--stagger, 0ms);
 }
 
 .pandal-row.is-selected {
@@ -951,8 +958,18 @@
   box-shadow: inset 3px 0 0 var(--vermilion);
 }
 
+.pandal-row__thumb {
+  grid-area: thumb;
+  align-self: center;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+}
+
 .pandal-row__main {
-  flex: 1;
+  grid-area: main;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -969,10 +986,244 @@
 }
 
 .pandal-row__actions {
-  flex: none;
+  grid-area: actions;
+  justify-self: end;
+  align-self: end;
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+/* ---------- Pandal previews (thumb / popup / detail) ---------- */
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+}
+
+.preview__frame {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--ivory);
+  isolation: isolate;
+}
+
+.preview__img,
+.preview__backdrop {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.preview__img {
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+
+.preview__img.is-loaded {
+  opacity: 1;
+}
+
+/* Blurred copy of the same file behind a contained photo; the subject itself is never blurred. */
+.preview__backdrop {
+  transform: scale(1.12);
+  filter: blur(16px) saturate(1.05) brightness(0.7);
+}
+
+.preview__badge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 12px);
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(34, 28, 28, 0.8);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.preview__badge svg {
+  flex: none;
+}
+
+.preview__badge-short {
+  display: none;
+}
+
+.preview__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  border: 1px dashed var(--line-strong);
+  border-radius: inherit;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.preview__caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.preview__note {
+  color: var(--ink-2);
+}
+
+.preview__credit a {
+  color: var(--vermilion-deep);
+}
+
+.preview--thumb .preview__frame {
+  width: 84px;
+  height: 84px;
+}
+
+.preview--thumb .preview__badge {
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  max-width: none;
+  justify-content: center;
+  padding: 1px 4px;
+}
+
+.preview--thumb .preview__badge-full {
+  display: none;
+}
+
+.preview--thumb .preview__badge-short {
+  display: inline;
+}
+
+.preview--popup .preview__frame {
+  height: 112px;
+}
+
+/* Detail header: the whole frame is shown (contain) inside a bounded height; actions follow right after. */
+.detail__media {
+  margin: -16px -18px 0;
+}
+
+.preview--detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 8px;
+  align-items: center;
+}
+
+.preview--detail .preview__frame {
+  grid-column: 1 / -1;
+  width: 100%;
+  aspect-ratio: var(--preview-ratio, 3 / 2);
+  max-height: min(220px, 30dvh);
+  border-radius: 0;
+  background: var(--ink);
+}
+
+.preview--detail .preview__img {
+  object-fit: contain;
+}
+
+.preview--detail .preview__badge {
+  left: 12px;
+  bottom: 10px;
+}
+
+.preview--detail .preview__caption {
+  grid-column: 1;
+  grid-row: 2;
+  margin-left: 18px;
+}
+
+.preview--detail .segmented {
+  grid-column: 2;
+  grid-row: 2;
+  margin-right: 18px;
+}
+
+.preview--detail .segmented__item {
+  flex: none;
+  flex-direction: row;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.preview--detail .preview__empty {
+  border: 0;
+  color: var(--muted);
+}
+
+.preview--detail[data-kind='none'] .preview__frame {
+  aspect-ratio: auto;
+  height: 112px;
+  background: var(--ivory);
+}
+
+@media (min-width: 760px) {
+  .preview--detail .preview__frame {
+    max-height: 280px;
+  }
+}
+
+/* Phones: the view toggle sits under the image and the caption gets the full width. */
+@media (max-width: 479px) {
+  .preview--detail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .preview--detail .segmented {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+    margin: 0 18px;
+  }
+
+  .preview--detail .preview__caption {
+    grid-column: 1;
+    grid-row: 3;
+    margin: 0 18px;
+  }
+}
+
+@keyframes preview-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ---------- Route tab ---------- */
@@ -1718,10 +1969,37 @@
 }
 
 .pp-popup__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'frame'
+    'credit'
+    'text'
+    'actions';
+  gap: 6px;
+  /* 248px, shrinking on narrow maps so the auto-panned popup stays clear of the right tools column. */
+  width: min(248px, 100cqw - 110px);
+}
+
+/* The figure's frame and caption are placed as separate grid items so the short-map layout can reflow them. */
+.pp-popup .preview {
+  display: contents;
+}
+
+.pp-popup .preview__frame {
+  grid-area: frame;
+}
+
+.pp-popup .preview__caption {
+  grid-area: credit;
+}
+
+.pp-popup__text {
+  grid-area: text;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 170px;
+  gap: 2px;
+  min-width: 0;
 }
 
 .pp-popup__alt {
@@ -1734,9 +2012,62 @@
 }
 
 .pp-popup__actions {
+  grid-area: actions;
   display: flex;
   gap: 6px;
-  margin-top: 4px;
+  margin-top: 2px;
+}
+
+/* Short maps (40dvh on a 568px phone): a side thumbnail keeps the whole popup, actions included, inside the map. */
+@container (max-height: 319px) {
+  .pp-popup__body {
+    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-areas:
+      'frame text'
+      'credit credit'
+      'actions actions';
+    column-gap: 8px;
+    row-gap: 4px;
+  }
+
+  .pp-popup .preview__frame {
+    height: 56px;
+  }
+
+  .pp-popup .preview__badge {
+    left: 3px;
+    right: 3px;
+    bottom: 3px;
+    max-width: none;
+    justify-content: center;
+    padding: 0 3px;
+  }
+
+  .pp-popup .preview__badge-full {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .pp-popup .preview__badge-short {
+    display: inline;
+  }
+}
+
+/* Narrow maps cannot fit the popup between the zoom control and the tools column; the zoom control
+   steps aside while a popup is open (pinch/double-tap zoom still work), as the legend sheet already does. */
+@container (max-width: 359px) {
+  .pp-map:has(.leaflet-popup) .leaflet-control-zoom {
+    visibility: hidden;
+  }
+
+  .pp-popup__actions .btn--small {
+    padding: 0 8px;
+  }
 }
 
 /* ---------- Dialogs ---------- */
@@ -1791,6 +2122,222 @@
   overflow-y: auto;
   font-size: 14px;
   color: var(--ink-2);
+}
+
+/* ---------- Festival intro ---------- */
+.festival-intro {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  color: #ffffff;
+  background: linear-gradient(160deg, var(--plum) 0%, var(--vermilion-deep) 55%, var(--ochre-deep) 100%);
+  opacity: 1;
+  transition: opacity 160ms ease-in, overlay 160ms allow-discrete, display 160ms allow-discrete;
+}
+
+.festival-intro:not([open]) {
+  opacity: 0;
+}
+
+.festival-intro::backdrop {
+  background: var(--ink);
+}
+
+.festival-intro__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Portrait 960x1444: hair top ~24%, forehead 33%, eyes 43%, mouth 56%, chin 61%. 39% keeps
+     crown-to-chin inside every landscape crop up to 2:1 (16:9 shows 24%-62% of the frame). */
+  object-position: 50% 39%;
+  animation: festival-photo 1000ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.festival-intro__backdrop {
+  display: none;
+}
+
+/* Wider than 2:1, cover cannot keep the whole face: show the full frame over its own blurred copy. */
+@media (min-aspect-ratio: 2/1) {
+  .festival-intro__backdrop {
+    display: block;
+    position: absolute;
+    inset: -6%;
+    width: 112%;
+    height: 112%;
+    object-fit: cover;
+    object-position: 50% 39%;
+    filter: blur(24px) brightness(0.7);
+  }
+
+  .festival-intro__photo {
+    object-fit: contain;
+    object-position: 50% 50%;
+  }
+}
+
+/* Contrast only where the text sits: a short bottom fade on phones, a lower-left pool on wide screens. */
+.festival-intro__scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46%;
+  background: linear-gradient(to top, rgba(34, 28, 28, 0.84) 0%, rgba(34, 28, 28, 0.5) 45%, rgba(34, 28, 28, 0) 100%);
+  pointer-events: none;
+}
+
+.festival-intro__text {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 760px;
+  padding: 0 calc(20px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  animation: festival-text 520ms 140ms ease-out both;
+}
+
+@media (min-width: 760px) and (orientation: landscape) {
+  .festival-intro__scrim {
+    right: auto;
+    width: min(720px, 52vw);
+    height: 62%;
+    background: radial-gradient(ellipse 100% 100% at 0% 100%, rgba(34, 28, 28, 0.86) 0%, rgba(34, 28, 28, 0.56) 42%, rgba(34, 28, 28, 0) 74%);
+  }
+
+  /* Stays left of the face (31%-63% of the frame) at every landscape width from 760px up. */
+  .festival-intro__text {
+    right: auto;
+    max-width: min(460px, 29vw);
+    padding: 0 0 calc(28px + env(safe-area-inset-bottom)) calc(28px + env(safe-area-inset-left));
+  }
+}
+
+.festival-intro__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.95;
+}
+
+.festival-intro__mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--vermilion);
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.festival-intro__title {
+  font-size: clamp(30px, 7vw, 46px);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.festival-intro__title-other {
+  font-size: clamp(18px, 4.2vw, 26px);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.festival-intro__credit {
+  max-width: 100%;
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.88;
+  overflow-wrap: anywhere;
+}
+
+.festival-intro__credit a {
+  color: #ffffff;
+}
+
+.festival-intro__skip {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(34, 28, 28, 0.58);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.festival-intro__skip:hover {
+  background: rgba(34, 28, 28, 0.8);
+}
+
+.festival-intro__skip:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(34, 28, 28, 0.7);
+}
+
+@keyframes festival-photo {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes festival-text {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* index.css already forces near-zero transition durations under reduced motion, so the exit is immediate. */
+@media (prefers-reduced-motion: reduce) {
+  .festival-intro__photo,
+  .festival-intro__backdrop,
+  .festival-intro__text,
+  .pandal-row,
+  .detail {
+    animation: none;
+  }
 }
 
 .navigation {
@@ -1944,6 +2491,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  animation: preview-rise 180ms ease-out both;
 }
 
 .detail__alt {

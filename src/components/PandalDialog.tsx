@@ -2,8 +2,10 @@ import { Check, ExternalLink, MapPin, Minus, Navigation, Plus, Undo2 } from 'luc
 import type { CrowdLevel, CrowdReport, Language, MetroStation, Pandal, Visit } from '../types'
 import { estimateCrowd } from '../domain/crowd'
 import { haversineMetres } from '../domain/geo'
+import { PANDAL_MEDIA } from '../data/pandalMedia'
 import { crowdLabel, formatClock, formatDate, formatDuration, formatMinuteRange, formatNumber, otherName, pickName, t, zoneLabel } from '../i18n'
 import { Modal } from './Modal'
+import { PandalPreview } from './PandalPreview'
 import { reportTimeLeftMs } from './uiState'
 
 interface PandalDialogProps {
@@ -45,31 +47,15 @@ export function PandalDialog(props: PandalDialogProps) {
     <Modal open={open} onClose={onClose} title={name} closeLabel={t(language, 'close')}>
       {pandal && crowd && (
         <div className="detail">
+          <div className="detail__media">
+            <PandalPreview language={language} media={PANDAL_MEDIA[pandal.id]} variant="detail" />
+          </div>
           <p className="detail__alt">
             <span className="alt-name">{otherName(language, pandal)}</span>
             <span className="chip-static">{zoneLabel(language, pandal.zone)}</span>
             {pandal.featured && <span className="chip-static chip-static--ochre">{t(language, 'featuredLabel')}</span>}
           </p>
           <p className="detail__highlight">{language === 'bn' ? pandal.highlightBn : pandal.highlight}</p>
-          <p>{language === 'bn' ? pandal.descriptionBn : pandal.description}</p>
-
-          <dl className="facts">
-            <div>
-              <dt>{t(language, 'address')}</dt>
-              <dd>{pandal.address}</dd>
-            </div>
-            <div>
-              <dt>{t(language, 'nearestMetro')}</dt>
-              <dd>
-                {metro ? pickName(language, metro) : t(language, 'metroNone')}
-                {metro && metroDistance && <small className="facts__note">{t(language, 'metroStraightLine', { d: metroDistance })}</small>}
-              </dd>
-            </div>
-            <div>
-              <dt>{t(language, 'visitAllowance', { n: formatNumber(language, pandal.visitMinutes) })}</dt>
-              <dd>{t(language, 'popularity', { n: formatNumber(language, pandal.popularity) })}</dd>
-            </div>
-          </dl>
 
           <div className="detail__actions">
             <button type="button" className="btn btn--primary" onClick={() => onNavigate(pandal.id)} aria-label={t(language, 'navigateTo', { name })} title={t(language, 'navigateTo', { name })}>
@@ -98,6 +84,26 @@ export function PandalDialog(props: PandalDialogProps) {
               {t(language, 'visitedAt', { time: formatClock(language, visit.at) })}{visit.method === 'auto' && ` · ${t(language, 'visitedAuto')}`}
             </p>
           )}
+
+          <p>{language === 'bn' ? pandal.descriptionBn : pandal.description}</p>
+
+          <dl className="facts">
+            <div>
+              <dt>{t(language, 'address')}</dt>
+              <dd>{pandal.address}</dd>
+            </div>
+            <div>
+              <dt>{t(language, 'nearestMetro')}</dt>
+              <dd>
+                {metro ? pickName(language, metro) : t(language, 'metroNone')}
+                {metro && metroDistance && <small className="facts__note">{t(language, 'metroStraightLine', { d: metroDistance })}</small>}
+              </dd>
+            </div>
+            <div>
+              <dt>{t(language, 'visitAllowance', { n: formatNumber(language, pandal.visitMinutes) })}</dt>
+              <dd>{t(language, 'popularity', { n: formatNumber(language, pandal.popularity) })}</dd>
+            </div>
+          </dl>
 
           <section className="detail__section" aria-labelledby="crowd-heading">
             <h3 id="crowd-heading" className="section-title">{t(language, 'reportCrowd')}</h3>
