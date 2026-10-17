@@ -1,6 +1,8 @@
 # Festival Release QA
 
-**2026-10-17: PASS for the tested local release gates. Publication pending.**
+**2026-10-17: deployed and publicly verified through 13:45:56.203 UTC.**
+The completed [public deployment](#public-deployment) is separate from the retained
+local QA and pre-publication snapshots below.
 Exact GPT-6 Astra runtime identity is unverified; no fallback or subagents were used.
 The local QA pass performed no Git, publishing, account or private-parent-document
 actions. The subsequent authorized deployment pass is recorded separately below.
@@ -146,4 +148,128 @@ tiles were controlled fixtures, not proof of public OSM availability. No current
 appearance, live crowd, exact entrance or routing-access guarantee is made. The
 initial intermittent focus failure and 19 unrelated lint warnings remain disclosed.
 
-This is a local QA artifact, not a deployment receipt. Publication remains pending.
+The preceding sections retain the local QA basis and pre-publication state. The
+completed public release is recorded below; historical pending wording is not a
+claim about the current live site.
+
+## Public Deployment
+
+The authorized public repository is
+[ArindamChatterjee007/kolkata-puja-guide](https://github.com/ArindamChatterjee007/kolkata-puja-guide).
+[PujaPath](https://arindamchatterjee007.github.io/kolkata-puja-guide/) and the
+[public office](https://arindamchatterjee007.github.io/kolkata-puja-guide/office.html)
+are deployed and verified.
+
+| Receipt | Observed value |
+| --- | --- |
+| Feature/build source | `b2c64206163a9d7e581f68e08a15f2a038a411ec` |
+| Source parent | `716d227904ae348f28744c272d8621c454cd312c` |
+| Published artifact | `ce2b7dfa1656be1aa0d161f1ba700c704fc34f91` |
+| Artifact parent | `faacbb31ca683650efa98ac271b1a7dc4f054c7e` |
+| Built-in Pages run | [39036548670](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/39036548670), success |
+| Deploy job completed | `2026-10-17T13:26:42.000Z` |
+| Public checks | `2026-10-17T13:38:40.257Z` through `13:45:56.203Z` |
+| Browser | Isolated installed headless Chrome `155.0.8059.82`, naturally visible documents |
+
+Both branches were advanced with ordinary commits and pushes. The source commit
+contains exactly 66 reviewed feature/metadata paths. The artifact contains 110
+audited `dist` files plus an empty `.nojekyll`, with explicit deletions of only
+`assets/main-BrP1ODdf.js` and `assets/main-Dj2CGfrN.css`. Index verification used
+`--no-renames`; Git's later display of a CSS rename does not change those explicit
+delete/add records. All 13 QA-pinned input hashes matched before publication.
+
+Pages remains **Deploy from a branch**, `gh-pages`, `/(root)`, API
+`build_type: "legacy"`. No active workflow was tracked or pushed, no authentication
+scope was changed, and the inactive Actions example was not activated. The four
+protected untracked files were excluded without reading their contents. The exact
+built-in run was watched synchronously to success; its API name is `pages build
+and deployment`, while the CLI workflow label is `pages-build-deployment`.
+
+### Public Acceptance
+
+- All **110 public build files** returned HTTP 200, appropriate MIME types and
+  exact SHA-256/byte matches. This includes all **42 new WebPs**, all notices,
+  project-prefixed fonts/scripts, worker, graph and office snapshot. `.nojekyll`
+  is the additional artifact control file, not a public content asset.
+- Real-time intro checks passed at **320x568 Bengali, 390x844 English, 1440x900
+  English and 1920x800 English**, on both first open and reload. The eight measured
+  open intervals were **1600.9-1609.4 ms**; the CSS exit remains 160 ms. Face geometry
+  kept forehead, eyes, nose, mouth and chin inside the viewport and separate from
+  text/Skip. The primary image was unblurred; the wide secondary background was
+  blurred. No test clock, automatic Skip fixture or image fixture was used.
+- Actual Skip, Escape, another real tab open, language rerender and reduced-motion
+  checks passed. Route, seeded visit and language persisted, with no intro storage
+  flag, GPS call or permission change. All planning data was synthetic and confined
+  to fresh QA contexts; no user tabs or stored plans were accessed.
+- All **33 thumbnails and 33 individual fallback files decoded**, and all eight
+  historical photo captions, capture years, authors and license links matched the
+  manifest. The legacy image decoded under the Pages project prefix. Photo/Area
+  switching changed both picture and credit correctly without changing the plan.
+- Mobile popup and detail controls were reachable without overlap or stacked
+  active dialogs. Measured primary controls were **44 px**, using the established
+  43.5 px fractional-layout tolerance, not a claimed 45 px minimum. One bounded
+  real-OSM check reached `ready`, with four decoded 256px tiles and six successful
+  tile responses. Other checks blocked tiles or were offline; no fixture basemap
+  was presented as real public map evidence.
+- The naturally visible public office at 1440px and 390px matched the exact
+  **19-task, 230-test, 11-file, 8-role** snapshot. Festival task search, combined
+  Design/Verified filters, List/Board and empty state passed. All model assignments
+  remain requested/runtime-unverified. Its release object still deliberately names
+  the **previous verified street checkpoint**, not this new artifact.
+- After actual initial worker installation, **108 same-origin/project-scoped
+  cache entries** matched the artifact hashes. The HTTP cache was cleared and the
+  previous document closed before opening a fresh document with the browser offline.
+  The new document was controlled by the correct worker; intro, Bagbazar's 2025 photo
+  and its area map returned HTTP 200 **from the service worker**, decoded and showed
+  the correct credits. The separate offline office showed all 19 tasks. The seeded
+  route, visits and language were unchanged; no external assets were cached.
+
+The build declares **114 precache entries** resolving to those **108 unique files**.
+Measured cached bodies total **11,954,077 bytes (11.95 MB; 11.40 MiB)**, including
+the 7,899,330-byte graph. The build's `11673.90 KiB` output was previously described
+as approximately 11.67 MB; the byte measurement corrects that unit conversion.
+The dated pre-publication board retains its earlier approximation. New image bytes
+remain 2,212,474, not the whole installation size.
+
+Twelve public captures were retained, and nine were visually inspected: all four
+intro viewports, mobile photo/area/popup, mobile office and offline area. These are
+ignored local evidence under `test-results/festival-release/public/`, not files
+published to Pages. The earlier local server-stopped proof remains intact; no
+second loopback audit or existing development-server shutdown was performed.
+
+### Verifier Corrections And Limits
+
+The first public run passed **10 of 11 checks**; its offline check waited for
+control on a reloaded page before installation had completed. A focused attempt
+then observed a null active worker. The diagnostic reproduced that this installed
+Playwright's `waitForFunction(async () => false)` resolves immediately with false,
+so it was not a valid readiness gate. An intermediate 20-second readiness probe
+also expired; an unrouted diagnostic completed the full initial download in about
+24 seconds and served a fresh offline office successfully, with no worker errors.
+
+Only the ignored verifier changed: it now awaits `navigator.serviceWorker.ready`
+and the actual activation event within a 60-second initial-download deadline,
+then verifies control on the fresh offline document. The final focused check
+passed at **13:45:56.203Z**, including all image, cache-hash, office and persistence
+assertions. Public acceptance therefore combines the ten earlier passing checks
+with this passing offline check; it is not presented as a clean first-run result.
+The deployed app, worker lifecycle and original test assertions were not changed.
+
+Machine evidence is retained locally in `publication-audit.json`,
+`source-publication.json`, `artifact-plan.json`, `artifact-publication.json`,
+`pages-run.json`, and the timestamped public reports beneath
+`test-results/festival-release/`. The fresh 230-unit/build/10-office gates above
+remain the final source gates; the prior passing **89 E2E checks were not rerun**
+for this publication-only work.
+
+Native Safari, physical phones, native Bengali acceptance and real foreground GPS
+remain unverified. Earlier automated image-background contrast analysis was
+incomplete; visual inspection is not a perfect-contrast or whole-UI certificate.
+Historical photos are not current 2026 appearances; area maps are not venue photos
+or offline interactive basemaps. Current crowds, entrances, closures and access
+remain unverified. Requested GPT-6 Astra runtime remains unverified; no fallback
+or subagents were used.
+
+This completed receipt is a **source-only documentation commit** after the
+artifact deployment. The board retains its previous verified checkpoint; no
+second static deployment is required merely to embed this artifact's own SHA.
