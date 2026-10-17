@@ -1,8 +1,10 @@
 # NEARESTFIX Release
 
-**Publication pending.** The existing public site is the verified festive release,
-not yet the nearest-fix artifact. This record covers only Kolkata nearby planning;
-multi-city routes, Asansol/Durgapur, round-trip timers and restaurants are excluded.
+**Deployed and publicly verified.** Both reported location regressions are fixed at
+[PujaPath](https://arindamchatterjee007.github.io/kolkata-puja-guide/). Public
+acceptance completed `2026-10-17T20:17:17.227Z` (18 October IST). This record
+covers only Kolkata nearby planning; multi-city routes, Asansol/Durgapur,
+round-trip timers and restaurants are excluded.
 
 Requested GPT-6 Astra (Copilot) and earlier requested Claude Fable 5.1 runtime
 identities remain unverified. This release uses one controller, no fallback and no
@@ -65,13 +67,19 @@ The fresh unit gate ran from `2026-10-17T20:04:48.681Z` to
 come from the JSON report's assertion results and test-file entries, not its
 nested describe-suite count. This includes 9 route, 44 UI-state and 57 office
 tests. The first metadata edit was immediately checked by all 57 office tests.
-The office fullSuite now records this actual current unit checkpoint. The
-TypeScript/Vite build passed from `2026-10-17T20:06:18.222Z` to
-`2026-10-17T20:06:21.521Z`; all **10 office browser checks** passed from
-`2026-10-17T20:06:21.524Z` to `2026-10-17T20:06:27.105Z` in isolated Chrome
-`155.0.8059.82`. These office checks do not claim planner acceptance. The final
-board snapshot is rebuilt and office-checked before publication. The prior 19
-lint warnings are historical, not a new lint execution.
+The office fullSuite records this actual current unit checkpoint. Initial build
+and office gates passed, then the final metadata snapshot passed all 57 focused
+office tests and was rebuilt and checked again before publication:
+
+| Final packaging gate | UTC start | UTC completion | Result |
+| --- | --- | --- | --- |
+| TypeScript/Vite build | 2026-10-17T20:07:40.175Z | 2026-10-17T20:07:43.319Z | Passed |
+| Office browser checks | 2026-10-17T20:07:43.319Z | 2026-10-17T20:07:48.474Z | 10 passed |
+
+The office used isolated Chrome `155.0.8059.82` and snapshot
+`2026-10-17T20:06:26.903Z`; these checks do not claim planner acceptance. No
+application source changed during release preparation. The prior 19 lint warnings
+are historical, not a new lint execution.
 
 Local receipts remain ignored under `test-results/nearby-release/`. Earlier full
 results remain in `test-results/nearest-location-full.json`; the new focused
@@ -94,6 +102,95 @@ workflow is staged, uploaded or read; no OAuth scope or Pages setting is changed
 The four protected untracked files remain unread and excluded. Licensed media,
 the 7,899,330-byte walking graph, intro and street behavior are retained.
 
-The actual source/artifact SHA, new built-in Pages run, completion time and fresh
-public verification will be added only after observation. A subsequent source-only
-receipt commit will not trigger an artifact rebuild to chase its own hash.
+The preparation snapshot deliberately said publication pending. The following
+observed receipt supersedes that wording, while the embedded office retains its
+previous-checkpoint semantics. This documentation update is source-only; no
+artifact rebuild is performed to chase the receipt commit's own hash.
+
+## Public Deployment
+
+| Receipt | Observed value |
+| --- | --- |
+| Feature/build source | `5ec24a6a321df4c818cbc2ed875d4dd2b7d1ec8d` |
+| Source baseline | `41dabcbf95e45bfa73b07ad021992e745fc4a5c4` |
+| Published artifact | `073e860d7f0ab13893e3370ac4819ec4793e7f4d` |
+| Previous artifact | `ce2b7dfa1656be1aa0d161f1ba700c704fc34f91` |
+| Built-in Pages run | [39065658862](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/39065658862), success |
+| Deploy job completed | `2026-10-17T20:11:55Z` |
+| Public verification | `2026-10-17T20:16:00.821Z` through `2026-10-17T20:17:17.227Z` |
+| Browser | Fresh isolated headless Chrome `155.0.8059.82` |
+
+The exact built-in run was watched synchronously to success. Both branches
+advanced by ordinary commits and fast-forward pushes. The source commit contains
+exactly 15 audited feature/documentation paths. The artifact contains 110 audited
+build files plus the preserved empty `.nojekyll`. Only the two obsolete tracked
+bundles `assets/main-4vt6CUS2.css` and `assets/main-CGSj2aC8.js` were removed;
+Git's CSS rename display does not change the explicitly checked delete/add paths.
+No source, test output, secret-shaped content, source maps or symlinks were
+published in the artifact.
+
+### Public Acceptance
+
+All **11 acceptance groups** are verified across the initial run and two targeted
+locator-only reruns. No application change or second deployment was needed.
+
+- All **110 public files** returned HTTP 200, expected MIME types and matching
+  SHA-256/byte counts. All **94 retained licensed asset files**, including the
+  **42 preview/opening WebPs** and **7,899,330-byte graph**, match the previous
+  festive audit. The current build has 108 unique precache targets totalling
+  **11,966,517 bytes**; this is a build measurement, not a new public offline test.
+- South Kalighat and North Shyambazar checks use the full 33-entry catalogue,
+  exclude visits and reset old Explore filters on the first location request.
+  Every pending hop and the displayed next destination are checked against
+  haversine distance. The first unvisited choices were Badamtala Ashar Sangha
+  in the South fixture and Sovabazar Rajbari in the North fixture.
+- Cancel keeps the custom selection unchanged. Confirmed nearby replacement
+  retains visits, reports and saved settings; the in-use action becomes disabled.
+  Reload retains the saved plan but removes the memory-only GPS anchor.
+- After Use nearby route and 65 seconds, South remains the accepted last-known
+  origin through re-optimization, with no North fallback or extra GPS request.
+  A failed refresh also retains that point and the saved plan.
+- Fresh North refresh preserves the user-selected name sort, visits, reports and
+  selected membership. Background fixes preserve manual route order. A replacement
+  confirmation uses the latest accepted point rather than its opening snapshot.
+- Approximately 11 m jitter retains the estimate; approximately 150 m movement
+  leaves order unchanged and shows the origin-change hint, not generic stale-plan
+  text. Explicit re-optimization uses the moved point at every hop.
+- Rejected first denied/stale fixes do not become current or nearby. Browser
+  permission remains `prompt`; all position callbacks are synthetic, and no actual
+  geolocation API is invoked. Raw mock coordinates stay out of local/session
+  storage and share payloads, and destination navigation omits a device origin.
+- Fresh desktop/mobile captures were inspected. The 320x568 Bengali check verifies
+  Last known labels, polite live status, visible primary controls, no horizontal
+  overflow and non-overlapping 44px targets with the existing 43.5px fractional
+  tolerance. Lower candidates scroll normally; this is not native-device sign-off.
+- The public office renders **22 tasks, 8 requested/runtime-unverified roles,
+  249 tests and 11 files**. Filters and empty state work. Its release object still
+  identifies the previous actual festive checkpoint, not the new artifact.
+
+Map tiles were controlled images; actual public same-origin assets were fetched.
+No new claim about live OSM availability, native phone GPS, background tracking,
+current event schedules, real-time crowds or globally shortest road routes is made.
+The intro, images, street engine and navigation code outside the owned nearest-fix
+paths were preserved. The prior 122-test full E2E result remains the broad gate.
+
+### Retained Corrections
+
+The initial public execution passed nine groups and stopped two on an ambiguous
+test locator that matched both Navigate and Navigate somewhere. Selecting the
+actual named destination button made both focused reruns pass; assertions were
+not weakened. A verifier syntax check also caught an awaited lookup before any
+public test ran. These were ignored QA-harness corrections, not application bugs.
+
+Two publication guards stopped safely: trimming a leading Git status space was
+corrected before source staging, and the default subprocess buffer was increased
+for the graph's staged-blob hash check before artifact commit/push. The existing
+staged index was revalidated and resumed without reset, add-all or force.
+
+Detailed reports, hashes and screenshots remain ignored under
+`test-results/nearby-release/`; consolidated public acceptance is in
+`test-results/nearby-release/public/acceptance.json`. The original failed reports
+are retained. The owned `.private/pages-publish` worktree was removed normally at
+`2026-10-17T20:19:26.892Z`. All four protected files remain unchanged, unread and
+untracked. No active workflow upload, OAuth reauthorization, Pages settings change,
+parent-workspace access or multi-city implementation occurred.
