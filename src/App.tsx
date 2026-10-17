@@ -6,7 +6,7 @@ import type { CuratedRoute } from './data/pandals'
 import { advanceCheckIn, CHECKIN_LIMITS, createCheckInState } from './domain/checkin'
 import type { CheckInState, CheckInStatus } from './domain/checkin'
 import { haversineMetres } from './domain/geo'
-import { planRoute } from './domain/route'
+import { orderNearestFirst, planRoute } from './domain/route'
 import { streetRouteProgress } from './domain/streets'
 import type { StreetEndpoint, StreetProgress, StreetStrategy } from './domain/streets'
 import { decodeSharedPlan, encodeSharedPlan } from './domain/storage'
@@ -15,7 +15,7 @@ import { formatNumber, pickName, t } from './i18n'
 import type { MessageKey } from './i18n'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useStreetNavigation } from './hooks/useStreetNavigation'
-import type { LocationErrorKind } from './hooks/useGeolocation'
+import type { DevicePosition, LocationErrorKind } from './hooks/useGeolocation'
 import { useMediaQuery } from './hooks/useMediaQuery'
 import { useIntervalNow, useNow } from './hooks/useNow'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
@@ -24,6 +24,7 @@ import { useToasts } from './hooks/useToasts'
 import { AppHeader } from './components/AppHeader'
 import { ExploreTab } from './components/ExploreTab'
 import { RouteTab } from './components/RouteTab'
+import type { NearbyPandalsProps } from './components/NearbyPandals'
 import { DirectionsPanel } from './components/DirectionsPanel'
 import { isStreetPoint, needsLocationWatch, streetCrowdSnapshot, streetCrowdStale, streetFixIssue } from './components/streetNavigation'
 import type { StreetCrowdSnapshot } from './components/streetNavigation'
@@ -39,6 +40,7 @@ import { Toasts } from './components/Toasts'
 import {
   applyOptimizedOrder, buildShareUrl, departureOptions, nextPendingStopId, orderKey, planFreshness,
   reportsKey, resolveDeparture, settingsKey, visitedKey, navigationMode, navigationUrl,
+  deviceOriginKey, nearbyPandals, planningFixIssue, PLANNING_FIX_LIMITS,
 } from './components/uiState'
 import type { PlanSettings, PlanSnapshot, SortMode } from './components/uiState'
 import './App.css'
@@ -112,6 +114,9 @@ export default function App() {
   const [zone, setZone] = useState<Zone | 'all'>('all')
   const [sort, setSort] = useState<SortMode>('zone')
   const [originMode, setOriginMode] = useState<'landmark' | 'device'>('landmark')
+  const [acceptedPosition, setAcceptedPosition] = useState<DevicePosition | null>(null)
+  const [planningRejection, setPlanningRejection] = useState<ReturnType<typeof planningFixIssue>>(null)
+  const [locationReveal, setLocationReveal] = useState(0)
   const [departure, setDeparture] = useState('now')
   const [snapshot, setSnapshot] = useState<PlanSnapshot | null>(null)
   const [planError, setPlanError] = useState(false)
@@ -131,6 +136,9 @@ export default function App() {
   const suppressedAutoId = useRef<string | null>(null)
   const sharedHandled = useRef(false)
   const walkingIntent = useRef(0)
+  const originIntent = useRef(0)
+  const hasLocated = useRef(false)
+  const panelBody = useRef<HTMLDivElement>(null)
   const acceptedMetres = useRef(0)
   const lastFollowedAt = useRef<number | null>(null)
   const latestWalkingSettings = useRef({ reports: plan.reports, departure })
@@ -139,15 +147,26 @@ export default function App() {
   const stops = plan.stopIds.map((id) => PANDAL_BY_ID.get(id)).filter((pandal) => pandal !== undefined)
   const visitedIds = new Set(plan.visits.map((visit) => visit.pandalId))
   const landmark = START_POINTS.find((point) => point.id === plan.startId) ?? START_POINTS[0]
-  const usingDevice = originMode === 'device' && geo.position !== null
-  const origin: NamedCoordinate = usingDevice && geo.position
-    ? { name: t(language, 'yourLocation'), lat: geo.position.lat, lng: geo.position.lng }
+  const planningIssue = geo.position ? planningFixIssue(geo.position, guidanceNow) : null
+  const usingDevice = originMode === 'device' && acceptedPosition !== null
+  const lastKnown = usingDevice && (guidanceNow - acceptedPosition.at > PLANNING_FIX_LIMITS.maxAgeMs
+    || geo.status === 'error' || planningRejection !== null)
+  const latestPlanner = useRef({ plan, position: acceptedPosition, originMode, departure, tab, lastKnown })
+  latestPlanner.current = { plan, position: acceptedPosition, originMode, departure, tab, lastKnown }
+  const locationFailure = geo.status === 'error' && geo.error ? t(language, locationErrorKeys[geo.error])
+    : planningRejection === 'inaccurate' && geo.position ? t(language, 'locPoorFix', {
+      m: formatNumber(language, Math.round(geo.position!.accuracyMetres)), limit: formatNumber(language, PLANNING_FIX_LIMITS.maxAccuracyMetres),
+    }) : planningRejection === 'stale' ? t(language, 'locStale') : planningRejection ? t(language, 'locUnavailable') : null
+  const locationNotice = locationFailure ? `${locationFailure} ${t(language, usingDevice ? 'locRetained' : 'locManual')}` : null
+  const origin: NamedCoordinate = usingDevice
+    ? { name: t(language, lastKnown ? 'lastKnownLocation' : 'yourLocation'), lat: acceptedPosition.lat, lng: acceptedPosition.lng }
     : { name: pickName(language, landmark), lat: landmark.lat, lng: landmark.lng }
   const settings: PlanSettings = {
     preference: plan.preference,
     pace: plan.pace,
     availableMinutes: plan.availableMinutes,
-    originKey: usingDevice ? 'device' : landmark.id,
+    originKey: usingDevice ? deviceOriginKey(acceptedPosition) : landmark.id,
+    deviceOrigin: usingDevice ? acceptedPosition : undefined,
     departureKey: departure,
   }
   const freshness = planFreshness(snapshot, plan.stopIds, plan.visits, settings, plan.reports)
@@ -173,7 +192,7 @@ export default function App() {
   ) : null
 
   const segments: RouteSegment[] = (() => {
-    if (snapshot && freshness !== 'changed') {
+    if (snapshot && (freshness === 'fresh' || freshness === 'visits-changed')) {
       return snapshot.plan.stops.map((stop) => ({ mode: stop.leg.mode, points: stop.leg.geometry }))
     }
     const pending = stops.filter((stop) => !visitedIds.has(stop.id))
@@ -184,6 +203,22 @@ export default function App() {
     document.documentElement.lang = language
     document.title = `${t(language, 'appName')} · ${t(language, 'city')}`
   }, [language])
+
+  useEffect(() => {
+    if (locationReveal > 0) panelBody.current?.scrollTo({ top: 0 })
+  }, [locationReveal])
+
+  const receivePlannerPosition = useEffectEvent((position: DevicePosition | null) => {
+    const issue = position ? planningFixIssue(position, Date.now()) : null
+    setPlanningRejection(issue)
+    if (position && issue === null && originMode === 'device' && geo.status === 'ready') {
+      setAcceptedPosition((previous) => !previous || position.at >= previous.at ? position : previous)
+    }
+  })
+
+  useEffect(() => {
+    receivePlannerPosition(geo.position)
+  }, [geo.position])
 
   function focusPoint(point: Coordinate) {
     focusNonce.current += 1
@@ -204,9 +239,11 @@ export default function App() {
     setSharedPending(null)
     if (!decoded) return
     if (plan.stopIds.length === 0) {
+      originIntent.current += 1
       dispatch({ type: 'applyShared', shared: decoded })
       setSnapshot(null)
       setOriginMode('landmark')
+      setAcceptedPosition(null)
       setTab('route')
       const shared = (decoded.stopIds ?? []).map((id) => PANDAL_BY_ID.get(id)).filter((pandal) => pandal !== undefined)
       const start = START_POINTS.find((point) => point.id === decoded.startId) ?? landmark
@@ -473,34 +510,39 @@ export default function App() {
     else void calculateWalking(draft, true)
   }
 
+  function estimateSelection(currentPlan: SavedPlan, currentOrigin: NamedCoordinate, currentSettings: PlanSettings) {
+    const currentStops = currentPlan.stopIds.map((id) => PANDAL_BY_ID.get(id)).filter((pandal) => pandal !== undefined)
+    const result = planRoute({
+      pandals: currentStops,
+      origin: currentOrigin,
+      metroStations: METRO_STATIONS,
+      preference: currentPlan.preference,
+      departureTimestamp: resolveDeparture(currentSettings.departureKey, Date.now()),
+      availableMinutes: currentPlan.availableMinutes,
+      pace: currentPlan.pace,
+      avoidedVisited: currentPlan.visits.map((visit) => visit.pandalId),
+      crowdReports: currentPlan.reports,
+    })
+    const reordered = applyOptimizedOrder(currentPlan.stopIds, result)
+    dispatch({ type: 'stops', stopIds: reordered })
+    setSnapshot({
+      plan: result,
+      orderKey: orderKey(reordered),
+      settingsKey: settingsKey(currentSettings),
+      deviceOrigin: currentSettings.deviceOrigin ? { lat: currentSettings.deviceOrigin.lat, lng: currentSettings.deviceOrigin.lng } : undefined,
+      visitedKey: visitedKey(reordered, currentPlan.visits),
+      reportsKey: reportsKey(reordered, currentPlan.reports),
+      createdAt: Date.now(),
+    })
+    setPlanError(false)
+    setTab('route')
+    focusBounds([currentOrigin, ...currentStops])
+  }
+
   function optimize() {
     if (stops.length === 0) return
-    const departureTimestamp = resolveDeparture(departure, Date.now())
     try {
-      const result = planRoute({
-        pandals: stops,
-        origin,
-        metroStations: METRO_STATIONS,
-        preference: plan.preference,
-        departureTimestamp,
-        availableMinutes: plan.availableMinutes,
-        pace: plan.pace,
-        avoidedVisited: [...visitedIds],
-        crowdReports: plan.reports,
-      })
-      const reordered = applyOptimizedOrder(plan.stopIds, result)
-      dispatch({ type: 'stops', stopIds: reordered })
-      setSnapshot({
-        plan: result,
-        orderKey: orderKey(reordered),
-        settingsKey: settingsKey(settings),
-        visitedKey: visitedKey(reordered, plan.visits),
-        reportsKey: reportsKey(reordered, plan.reports),
-        createdAt: Date.now(),
-      })
-      setPlanError(false)
-      setTab('route')
-      focusBounds([origin, ...stops])
+      estimateSelection(plan, origin, settings)
     } catch {
       setPlanError(true)
     }
@@ -517,8 +559,10 @@ export default function App() {
 
   function applyCurated(route: CuratedRoute) {
     const apply = () => {
+      originIntent.current += 1
       dispatch({ type: 'stops', stopIds: route.stopIds, startId: route.startId })
       setOriginMode('landmark')
+      setAcceptedPosition(null)
       setSnapshot(null)
       setTab('route')
       const start = START_POINTS.find((point) => point.id === route.startId)
@@ -538,23 +582,97 @@ export default function App() {
     })
   }
 
-  async function locateDevice() {
+  async function locateDevice(revealNearby = true) {
+    const intent = ++originIntent.current
     const sample = await geo.locateOnce()
-    if (sample) {
+    if (intent !== originIntent.current) return
+    if (sample && planningFixIssue(sample, Date.now()) === null) {
+      const currentPlan = latestPlanner.current.plan
+      const completed = new Set(currentPlan.visits.map((visit) => visit.pandalId))
+      const pending = currentPlan.stopIds.filter((id) => !completed.has(id))
+        .map((id) => PANDAL_BY_ID.get(id)).filter((pandal) => pandal !== undefined)
+      dispatch({ type: 'stops', stopIds: [
+        ...currentPlan.stopIds.filter((id) => completed.has(id)),
+        ...orderNearestFirst(pending, sample).map((pandal) => pandal.id),
+      ] })
+      setAcceptedPosition(sample)
       setOriginMode('device')
+      if (!hasLocated.current) {
+        hasLocated.current = true
+        setSort('nearest')
+        setZone('all')
+        setQuery('')
+      }
+      if (revealNearby && latestPlanner.current.tab !== 'directions') {
+        if (!wide) setMobileLayout('list')
+        setLocationReveal(intent)
+      }
       focusPoint(sample)
-    } else {
-      setOriginMode('landmark')
     }
   }
 
   function forgetLocation() {
+    originIntent.current += 1
+    setConfirm(null)
     closeDirections()
     geo.forget()
     setOriginMode('landmark')
+    setAcceptedPosition(null)
     setAutoCheckIn(false)
     suppressedAutoId.current = null
     checkInState.current = createCheckInState()
+  }
+
+  function nearbyProposal() {
+    const latest = latestPlanner.current
+    const sample = latest.position
+    if (latest.originMode !== 'device' || !sample) return null
+    const nearby = nearbyPandals(PANDALS, latest.plan.visits, sample)
+    const candidateIds = nearby.candidates.map(({ pandal }) => pandal.id)
+    if (candidateIds.length === 0) return null
+    const completed = new Set(latest.plan.visits.map((visit) => visit.pandalId))
+    const pendingIds = latest.plan.stopIds.filter((id) => !completed.has(id))
+    const samePending = pendingIds.length === candidateIds.length && pendingIds.every((id) => candidateIds.includes(id))
+    const nearestIds = orderNearestFirst(nearby.candidates.map(({ pandal }) => pandal), sample).map((pandal) => pandal.id)
+    const sameOrder = samePending && pendingIds.every((id, index) => id === nearestIds[index])
+    return { latest, sample, nearby, candidateIds, samePending, sameOrder }
+  }
+
+  function applyNearbyRoute() {
+    const proposal = nearbyProposal()
+    if (!proposal) return
+    const { latest, sample, candidateIds, samePending } = proposal
+    try {
+      if (!samePending) closeDirections()
+      originIntent.current += 1
+      estimateSelection({ ...latest.plan, stopIds: samePending ? latest.plan.stopIds : candidateIds },
+        { name: t(latest.plan.language, latest.lastKnown ? 'lastKnownLocation' : 'yourLocation'), lat: sample.lat, lng: sample.lng }, {
+          preference: latest.plan.preference, pace: latest.plan.pace, availableMinutes: latest.plan.availableMinutes,
+          originKey: deviceOriginKey(sample), deviceOrigin: sample, departureKey: latest.departure,
+        })
+      setSelectedId(null)
+      setLocationReveal(originIntent.current)
+    } catch {
+      setPlanError(true)
+    }
+  }
+
+  function requestNearbyRoute() {
+    const proposal = nearbyProposal()
+    if (!proposal || proposal.sameOrder) return
+    if (proposal.latest.plan.stopIds.length === 0 || proposal.samePending) {
+      applyNearbyRoute()
+      return
+    }
+    setConfirm({
+      title: t(language, 'replaceTitle'),
+      body: t(language, 'replaceBody', {
+        n: formatNumber(language, proposal.latest.plan.stopIds.length),
+        name: t(language, proposal.nearby.withinRadius ? 'nearbyHeading' : 'closestHeading'),
+      }),
+      confirmLabel: t(language, 'replace'),
+      onConfirm: applyNearbyRoute,
+    })
   }
 
   function startJourney() {
@@ -614,10 +732,12 @@ export default function App() {
       confirmLabel: t(language, 'clearConfirm'),
       danger: true,
       onConfirm: () => {
+        originIntent.current += 1
         closeDirections()
         dispatch({ type: 'clearAll' })
         geo.forget()
         setOriginMode('landmark')
+        setAcceptedPosition(null)
         setSnapshot(null)
         setJourneyActive(false)
         setAutoCheckIn(false)
@@ -634,9 +754,11 @@ export default function App() {
 
   function acceptShared() {
     if (!sharedPending) return
+    originIntent.current += 1
     dispatch({ type: 'applyShared', shared: sharedPending })
     setSnapshot(null)
     setOriginMode('landmark')
+    setAcceptedPosition(null)
     setSharedPending(null)
     setTab('route')
     const start = START_POINTS.find((point) => point.id === sharedPending.startId) ?? landmark
@@ -664,6 +786,12 @@ export default function App() {
 
   const detailVisit = detailId ? plan.visits.find((visit) => visit.pandalId === detailId) : undefined
   const detailReport = detailId ? plan.reports.find((item) => item.pandalId === detailId) : undefined
+  const nearby: NearbyPandalsProps | null = usingDevice ? {
+    language, nearby: nearbyPandals(PANDALS, plan.visits, acceptedPosition), accuracyMetres: acceptedPosition.accuracyMetres,
+    lastKnown, updatedAt: acceptedPosition.at, inUse: nearbyProposal()?.sameOrder ?? false,
+    locating: geo.status === 'locating', onRefresh: () => void locateDevice(),
+    onUseRoute: requestNearbyRoute, onOpenDetails: setDetailId,
+  } : null
 
   const tabs: { id: Tab, label: string, icon: typeof Compass }[] = [
     { id: 'explore', label: t(language, 'tabExplore'), icon: Compass },
@@ -742,7 +870,7 @@ export default function App() {
                 )
               })}
             </div>
-            <div className="panel__body" role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+            <div className="panel__body" ref={panelBody} role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
               {store.storageStatus === 'blocked' && <p className="banner banner--warn" role="status">{t(language, 'storageBlocked')}</p>}
               {store.storageStatus === 'load-error' && <p className="banner banner--warn" role="status">{t(language, 'storageLoadError')}</p>}
               {store.saveError && <p className="banner banner--warn" role="alert">{t(language, 'storageSaveError')}</p>}
@@ -779,6 +907,10 @@ export default function App() {
                   query={query}
                   zone={zone}
                   sort={sort}
+                  nearby={nearby}
+                  locationNotice={locationNotice}
+                  locating={geo.status === 'locating'}
+                  onUseLocation={() => void locateDevice()}
                   curatedRoutes={CURATED_ROUTES}
                   startPoints={START_POINTS}
                   onQuery={setQuery}
@@ -826,10 +958,11 @@ export default function App() {
                   stops={stops}
                   visits={plan.visits}
                   startPoints={START_POINTS}
-                  originMode={originMode}
-                  devicePosition={geo.position}
+                  originMode={usingDevice ? 'device' : 'landmark'}
+                  devicePosition={acceptedPosition ?? geo.position}
                   locationStatus={geo.status}
-                  locationError={geo.error}
+                  locationNotice={locationNotice}
+                  nearby={nearby}
                   departure={departure}
                   departureChoices={departureChoices}
                   snapshot={snapshot}
@@ -842,8 +975,10 @@ export default function App() {
                   nextStopId={nextStopId}
                   selectedId={selectedId}
                   onStartChange={(startId) => {
+                    originIntent.current += 1
                     dispatch({ type: 'start', startId })
                     setOriginMode('landmark')
+                    setAcceptedPosition(null)
                   }}
                   onUseLocation={() => void locateDevice()}
                   onForgetLocation={forgetLocation}
@@ -854,7 +989,10 @@ export default function App() {
                   onMove={(id, delta) => dispatch({ type: 'move', id, delta })}
                   onRemove={(id) => toggleStop(id)}
                   onClear={() => {
+                    originIntent.current += 1
                     dispatch({ type: 'stops', stopIds: [] })
+                    setOriginMode('landmark')
+                    setAcceptedPosition(null)
                     setSnapshot(null)
                   }}
                   onOptimize={optimize}
@@ -880,7 +1018,7 @@ export default function App() {
             selectedId={selectedId}
             nextStopId={journeyActive ? nextStopId : null}
             origin={usingDevice || tab === 'directions' ? null : origin}
-            devicePosition={geo.position}
+            devicePosition={planningIssue || geo.status === 'error' ? null : geo.position}
             segments={tab === 'directions' ? [] : segments}
             directions={tab === 'directions' && streetResult && selectedStreetRoute && walkingContext ? {
               route: selectedStreetRoute,
@@ -906,7 +1044,7 @@ export default function App() {
             onOpenDetails={setDetailId}
             onNavigate={openNavigation}
             onToggleStop={toggleStop}
-            onLocate={() => void locateDevice()}
+            onLocate={() => void locateDevice(false)}
             onFitRoute={() => focusBounds(tab === 'directions' && selectedStreetRoute ? selectedStreetRoute.geometry : [origin, ...stops], tab === 'directions' ? 17 : 15)}
           />
         </main>

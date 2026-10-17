@@ -6,13 +6,14 @@ import type { Coordinate, Landmark, Language, Pace, Pandal, TravelPreference, Vi
 import type { SavedPlan } from '../domain/storage'
 import type { PlannedStop } from '../domain/route'
 import type { LegEstimate } from '../domain/travel'
-import type { DevicePosition, LocationErrorKind, LocationStatus } from '../hooks/useGeolocation'
+import type { DevicePosition, LocationStatus } from '../hooks/useGeolocation'
 import {
   crowdLabel, formatClock, formatDuration, formatDurationRange, formatMinuteRange, formatNumber, modeLabel, otherName,
   pickName, t,
 } from '../i18n'
-import type { MessageKey } from '../i18n'
 import { Segmented } from './Segmented'
+import { NearbyPandals } from './NearbyPandals'
+import type { NearbyPandalsProps } from './NearbyPandals'
 import { directionsUrl, explainLeg } from './uiState'
 import type { DepartureOption, PlanFreshness, PlanSnapshot } from './uiState'
 
@@ -25,7 +26,8 @@ interface RouteTabProps {
   originMode: 'landmark' | 'device'
   devicePosition: DevicePosition | null
   locationStatus: LocationStatus
-  locationError: LocationErrorKind | null
+  locationNotice: string | null
+  nearby: NearbyPandalsProps | null
   departure: string
   departureChoices: readonly DepartureOption[]
   snapshot: PlanSnapshot | null
@@ -58,11 +60,6 @@ interface RouteTabProps {
   onAutoToggle: (enabled: boolean) => void
 }
 
-const locationErrorKeys: Record<LocationErrorKind, MessageKey> = {
-  denied: 'locDenied', unavailable: 'locUnavailable', timeout: 'locTimeout',
-  unsupported: 'locUnsupported', insecure: 'locInsecure', outside: 'locOutside',
-}
-
 function ModeIcon({ mode }: { mode: LegEstimate['mode'] }) {
   if (mode === 'metro') return <TrainFront size={18} aria-hidden="true" />
   if (mode === 'road') return <CarFront size={18} aria-hidden="true" />
@@ -88,7 +85,7 @@ function LegOption({ language, option }: { language: Language, option: LegEstima
 
 export function RouteTab(props: RouteTabProps) {
   const {
-    language, plan, stops, visits, startPoints, originMode, devicePosition, locationStatus, locationError,
+    language, plan, stops, visits, startPoints, originMode, devicePosition, locationStatus, locationNotice, nearby,
     departure, departureChoices, snapshot, freshness, aged, planError, journeyActive, autoCheckIn, autoStatus,
     nextStopId, selectedId, onStartChange, onUseLocation, onForgetLocation, onPreference, onPace, onBudget,
     onDeparture, onMove, onRemove, onClear, onOptimize, onTrim, onOpenDetails, onShowOnMap, onToggleVisit,
@@ -96,7 +93,7 @@ export function RouteTab(props: RouteTabProps) {
   } = props
   const visitById = new Map(visits.map((visit) => [visit.pandalId, visit]))
   const route = snapshot?.plan ?? null
-  const showEstimates = route !== null && freshness !== 'changed'
+  const showEstimates = route !== null && (freshness === 'fresh' || freshness === 'visits-changed')
   const plannedById = new Map<string, PlannedStop>(route ? route.stops.map((stop) => [stop.pandalId, stop]) : [])
   const plannedIndex = new Map<string, number>(route ? route.stops.map((stop, index) => [stop.pandalId, index]) : [])
   const stopById = new Map(stops.map((stop) => [stop.id, stop]))
@@ -104,7 +101,7 @@ export function RouteTab(props: RouteTabProps) {
   const nextStop = nextStopId ? stopById.get(nextStopId) ?? null : null
   const landmark = startPoints.find((point) => point.id === plan.startId) ?? startPoints[0]
   const usingDevice = originMode === 'device' && devicePosition !== null
-  const originName = usingDevice ? t(language, 'yourLocation') : pickName(language, landmark)
+  const originName = usingDevice ? t(language, nearby?.lastKnown ? 'lastKnownLocation' : 'yourLocation') : pickName(language, landmark)
   const originPoint: Coordinate | null = usingDevice ? null : landmark
 
   const budgetOptions = [120, 240, 360, 480].map((minutes) => ({
@@ -193,6 +190,8 @@ export function RouteTab(props: RouteTabProps) {
         </div>
       </section>
 
+      {nearby && <NearbyPandals {...nearby} />}
+
       {journeyActive && (
         <div className="journey-strip" role="status">
           <span className="journey-strip__dot" aria-hidden="true" />
@@ -205,9 +204,9 @@ export function RouteTab(props: RouteTabProps) {
       <section className="block" aria-labelledby="start-heading">
         <h2 id="start-heading" className="section-title">{t(language, 'startFrom')}</h2>
         <div className="start-row">
-          <label className="select">
-            <span className="sr-only">{t(language, 'startLandmark')}</span>
-            <select value={plan.startId} onChange={(event) => onStartChange(event.target.value)} title={t(language, 'startLandmark')}>
+          <label className={usingDevice ? 'select select--stacked' : 'select'}>
+            <span className={usingDevice ? 'setting__label' : 'sr-only'}>{t(language, usingDevice ? 'alternativeStart' : 'startLandmark')}</span>
+            <select value={plan.startId} onChange={(event) => onStartChange(event.target.value)} title={t(language, usingDevice ? 'alternativeStart' : 'startLandmark')}>
               {startPoints.map((point) => (
                 <option key={point.id} value={point.id}>{pickName(language, point)}</option>
               ))}
@@ -226,15 +225,15 @@ export function RouteTab(props: RouteTabProps) {
             {locationStatus === 'locating' ? t(language, 'locating') : t(language, 'useMyLocation')}
           </button>
         </div>
-        {usingDevice && devicePosition && (
+        {(devicePosition || locationStatus === 'locating') && (
           <p className="hint hint--row">
-            <span>{t(language, 'yourLocationAccuracy', { m: formatNumber(language, Math.round(devicePosition.accuracyMetres)) })} · {t(language, 'locationInMemory')}</span>
+            <span>{usingDevice && devicePosition && `${t(language, nearby?.lastKnown ? 'lastKnownAccuracy' : 'yourLocationAccuracy', { m: formatNumber(language, Math.round(devicePosition.accuracyMetres)) })} · `}{t(language, 'locationInMemory')}</span>
             <button type="button" className="btn btn--small btn--quiet" onClick={onForgetLocation}>{t(language, 'forgetLocation')}</button>
           </p>
         )}
-        {locationError && locationStatus === 'error' && (
+        {locationNotice && (
           <p className="hint hint--warn" role="alert">
-            <TriangleAlert size={16} aria-hidden="true" /> {t(language, locationErrorKeys[locationError])}
+            <TriangleAlert size={16} aria-hidden="true" /> {locationNotice}
           </p>
         )}
       </section>
@@ -250,13 +249,14 @@ export function RouteTab(props: RouteTabProps) {
         </div>
 
         <div className="optimize">
-          <button type="button" className="btn btn--primary btn--block" onClick={onOptimize} disabled={stops.length === 0}>
+          <button type="button" className="btn btn--primary btn--block" onClick={onOptimize} disabled={stops.length === 0} title={t(language, 'nearestFirstHint')}>
             <Sparkles size={18} aria-hidden="true" />
             {snapshot ? t(language, 'reoptimize') : t(language, 'optimize')}
           </button>
           {planError && <p className="hint hint--warn" role="alert">{t(language, 'planFailed')}</p>}
           {snapshot && freshness === 'changed' && <p className="hint hint--warn">{t(language, 'planChanged')}</p>}
-          {snapshot && freshness !== 'changed' && (freshness === 'visits-changed' || aged) && (
+          {snapshot && freshness === 'location-changed' && <p className="hint hint--warn" role="status">{t(language, 'planLocationChanged')}</p>}
+          {showEstimates && (freshness === 'visits-changed' || aged) && (
             <p className="hint">{t(language, 'planVisitsChanged')}</p>
           )}
         </div>

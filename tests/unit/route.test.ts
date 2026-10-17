@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_ORIGIN, planRoute } from '../../src/domain/route'
+import { DEFAULT_ORIGIN, orderNearestFirst, planRoute } from '../../src/domain/route'
 import type { PlanInput } from '../../src/domain/route'
+import { haversineMetres } from '../../src/domain/geo'
 import type { Pandal } from '../../src/types'
 
 function pandal(id: string, lat = DEFAULT_ORIGIN.lat, popularity: 1 | 2 | 3 = 1): Pandal {
@@ -65,6 +66,50 @@ describe('itinerary planning', () => {
     expect(plan.stops[1].arrivalWindow.latest).toBe(plan.stops[0].departureWindow.latest)
     const relaxed = planRoute({ ...input(selected), pace: 'relaxed' })
     expect(relaxed.totals.visitMinutes).toBeGreaterThan(plan.totals.visitMinutes)
+  })
+
+  it('visits the closest busy stop before a quieter farther stop for every travel preference', () => {
+    const closest = { ...pandal('busy', 22.565, 3), visitMinutes: 200 }
+    const farther = { ...pandal('quiet', 22.566), visitMinutes: 0 }
+    for (const preference of ['walk', 'balanced', 'less-walking'] as const) {
+      const plan = planRoute({
+        ...input([farther, closest]), preference,
+        departureTimestamp: Date.parse('2026-10-13T13:30:00Z'),
+      })
+      expect(plan.orderedIds).toEqual(['busy', 'quiet'])
+      expect(plan.optimization).toBe('nearest-neighbour-geographic')
+      expect(plan.stops[1].arrivalTimestamp).toBeGreaterThanOrEqual(plan.stops[0].departureTimestamp)
+    }
+  })
+
+  it('chooses the nearest unvisited stop at every hop from the supplied southern origin', () => {
+    const selected = [pandal('north', 22.58), pandal('south', 22.52, 3),
+      pandal('middle', 22.55), pandal('visited', 22.519), pandal('west', 22.535)]
+    selected[4] = { ...selected[4], lng: 88.33 }
+    const origin = { name: 'Southern fixture', lat: 22.518, lng: 88.3519 }
+    const snapshot = JSON.stringify(selected)
+    const plan = planRoute({ ...input(selected), origin, avoidedVisited: ['visited'] })
+    expect(plan.orderedIds[0]).toBe('south')
+    expect(plan.origin).toEqual(origin)
+    const remaining = selected.filter((stop) => stop.id !== 'visited')
+    let position = origin
+    for (const id of plan.orderedIds) {
+      const next = remaining.find((stop) => stop.id === id)!
+      for (const candidate of remaining) {
+        expect(haversineMetres(position, next)).toBeLessThanOrEqual(haversineMetres(position, candidate))
+      }
+      remaining.splice(remaining.indexOf(next), 1)
+      position = next
+    }
+    expect(remaining).toEqual([])
+    expect(JSON.stringify(selected)).toBe(snapshot)
+  })
+
+  it('breaks equal-distance ties by id without mutating caller order', () => {
+    const selected = [pandal('zeta'), pandal('alpha'), pandal('middle')]
+    expect(orderNearestFirst(selected, DEFAULT_ORIGIN).map((stop) => stop.id)).toEqual(['alpha', 'middle', 'zeta'])
+    expect(selected.map((stop) => stop.id)).toEqual(['zeta', 'alpha', 'middle'])
+    expect(orderNearestFirst([], DEFAULT_ORIGIN)).toEqual([])
   })
 
   it('supports twelve stops and explicit visited exclusions without mutating history', () => {

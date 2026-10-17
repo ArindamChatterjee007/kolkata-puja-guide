@@ -1,9 +1,9 @@
 import type {
-  CrowdReport, Landmark, MetroStation, MinuteRange, NamedCoordinate, Pace, Pandal, TravelPreference,
+  Coordinate, CrowdReport, Landmark, MetroStation, MinuteRange, NamedCoordinate, Pace, Pandal, TravelPreference,
 } from '../types'
 import { estimateCrowd, getIstHour } from './crowd'
 import type { CrowdEstimate } from './crowd'
-import { isCoordinate } from './geo'
+import { haversineMetres, isCoordinate } from './geo'
 import { createLegEstimator } from './travel'
 import type { LegEstimate } from './travel'
 
@@ -63,12 +63,27 @@ export interface RoutePlan {
   budgetComparison: 'upper-estimate'
   suggestedIds?: string[]
   label: 'Optimized estimate'
-  optimization: 'nearest-neighbour-2opt'
+  optimization: 'nearest-neighbour-geographic'
   uncertainty: string
 }
 
 function midpoint(range: MinuteRange): number {
   return (range.min + range.max) / 2
+}
+
+export function orderNearestFirst(pandals: readonly Pandal[], origin: Coordinate): Pandal[] {
+  if (!isCoordinate(origin)) throw new RangeError('Invalid coordinate')
+  const remaining = [...pandals]
+  const ordered: Pandal[] = []
+  let position = origin
+  while (remaining.length) {
+    remaining.sort((first, second) => haversineMetres(position, first) - haversineMetres(position, second)
+      || first.id.localeCompare(second.id, 'en'))
+    const next = remaining.shift()!
+    ordered.push(next)
+    position = next
+  }
+  return ordered
 }
 
 export function planRoute(input: PlanInput): RoutePlan {
@@ -109,7 +124,6 @@ export function planRoute(input: PlanInput): RoutePlan {
     let earliest = clock
     let latest = clock
     let position = origin
-    let score = 0
     const stops: PlannedStop[] = []
     const totals: PlanTotals = {
       travelMinutes: { min: 0, max: 0 },
@@ -146,7 +160,6 @@ export function planRoute(input: PlanInput): RoutePlan {
       totals.queueMinutes.max += crowd.queueMinutes.max
       totals.visitMinutes += visitMinutes
       totals.walkMetres += leg.walkMetres
-      score += leg.scoreMinutes + midpoint(crowd.queueMinutes) + visitMinutes
       position = pandal
     }
     totals.durationMinutes = {
@@ -155,37 +168,10 @@ export function planRoute(input: PlanInput): RoutePlan {
     }
     totals.estimatedMinutes = midpoint(totals.durationMinutes)
     totals.walkKm = totals.walkMetres / 1_000
-    return { order: [...order], stops, totals, score, finishTimestamp: clock }
+    return { order: [...order], stops, totals, finishTimestamp: clock }
   }
 
-  type Evaluation = ReturnType<typeof evaluate>
-  const compare = (first: Evaluation, second: Evaluation) => first.score - second.score
-    || first.order.map((pandal) => pandal.id).join('|').localeCompare(second.order.map((pandal) => pandal.id).join('|'), 'en')
-  const greedy: Pandal[] = []
-  const remaining = [...pending].sort((first, second) => first.id.localeCompare(second.id, 'en'))
-  while (remaining.length) {
-    const candidates = remaining.map((pandal) => evaluate([...greedy, pandal])).sort(compare)
-    const next = candidates[0].order.at(-1)!
-    greedy.push(next)
-    remaining.splice(remaining.findIndex((pandal) => pandal.id === next.id), 1)
-  }
-  let best = [evaluate(pending), evaluate(greedy)].sort(compare)[0]
-  for (let pass = 0; pass < 6; pass += 1) {
-    let improved = best
-    for (let start = 0; start < best.order.length - 1; start += 1) {
-      for (let end = start + 1; end < best.order.length; end += 1) {
-        const order = [
-          ...best.order.slice(0, start),
-          ...best.order.slice(start, end + 1).reverse(),
-          ...best.order.slice(end + 1),
-        ]
-        const candidate = evaluate(order)
-        if (compare(candidate, improved) < 0) improved = candidate
-      }
-    }
-    if (best.score - improved.score < 1e-8) break
-    best = improved
-  }
+  const best = evaluate(orderNearestFirst(pending, origin))
   const overBudget = best.totals.durationMinutes.max > input.availableMinutes
   return {
     origin: { name: origin.name, lat: origin.lat, lng: origin.lng },
@@ -204,7 +190,7 @@ export function planRoute(input: PlanInput): RoutePlan {
         <= input.departureTimestamp + input.availableMinutes * 60_000).map((stop) => stop.pandalId),
     } : {}),
     label: 'Optimized estimate',
-    optimization: 'nearest-neighbour-2opt',
-    uncertainty: 'A bounded nearest-neighbour/2-opt estimate, not a globally shortest street route. Queues and travel are recalculated at sequential midpoint arrivals; ranges are approximate, not guarantees. The budget flag compares the upper total, and suggestions never remove selected stops. Default origin is a landmark, not device location. Confirm metro service and road closures locally.',
+    optimization: 'nearest-neighbour-geographic',
+    uncertainty: 'Nearest-first by approximate geographic distance, not a globally shortest route. Actual road navigation is separate. Queues and travel are recalculated at sequential midpoint arrivals; ranges are approximate, not guarantees. The budget flag compares the upper total, and suggestions never remove selected stops. Default origin is a landmark, not device location. Confirm metro service and road closures locally.',
   }
 }

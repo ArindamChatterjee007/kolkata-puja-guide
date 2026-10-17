@@ -1,4 +1,4 @@
-import { MapPin, Minus, Plus, Search, X } from 'lucide-react'
+import { LocateFixed, MapPin, Minus, Plus, Search, X } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import type { Coordinate, CrowdReport, Language, Pandal, Zone } from '../types'
 import { estimateCrowd } from '../domain/crowd'
@@ -8,6 +8,8 @@ import { PANDAL_MEDIA } from '../data/pandalMedia'
 import type { Landmark } from '../types'
 import { crowdLabel, formatNumber, otherName, pickName, t, zoneLabel } from '../i18n'
 import { PandalPreview } from './PandalPreview'
+import { NearbyPandals } from './NearbyPandals'
+import type { NearbyPandalsProps } from './NearbyPandals'
 import { matchesPandal, sortPandals } from './uiState'
 import type { SortMode } from './uiState'
 
@@ -24,6 +26,10 @@ interface ExploreTabProps {
   query: string
   zone: Zone | 'all'
   sort: SortMode
+  nearby: NearbyPandalsProps | null
+  locationNotice: string | null
+  locating: boolean
+  onUseLocation: () => void
   curatedRoutes: readonly CuratedRoute[]
   startPoints: readonly Landmark[]
   onQuery: (query: string) => void
@@ -39,6 +45,7 @@ export function ExploreTab(props: ExploreTabProps) {
   const {
     language, pandals, stopIds, reports, now, origin, selectedId, query, zone, sort, curatedRoutes, startPoints,
     onQuery, onZone, onSort, onUseRoute, onToggleStop, onOpenDetails, onShowOnMap,
+    nearby, locationNotice, locating, onUseLocation,
   } = props
   const filtering = query.trim() !== '' || zone !== 'all'
   const filtered = sortPandals(
@@ -48,8 +55,68 @@ export function ExploreTab(props: ExploreTabProps) {
   const full = stopIds.length >= 12
   const stopKey = [...stopIds].sort().join(',')
 
+  const curatedSection = !filtering && (
+    <section className="routes" aria-labelledby="routes-heading">
+      <div className="routes__head">
+        <figure className="strip">
+          <img
+            src={`${import.meta.env.BASE_URL}images/puja-kolkata.webp`}
+            width={720}
+            height={960}
+            alt={t(language, 'photoCaption')}
+            loading="lazy"
+            decoding="async"
+          />
+        </figure>
+        <div className="routes__intro">
+          <h2 id="routes-heading" className="section-title">{t(language, 'suggestedRoutes')}</h2>
+          <p className="strip__credit">
+            {t(language, 'photoCredit')}{' '}
+            <a href="https://commons.wikimedia.org/wiki/File:Kolkata_Durga_Puja_Pandle_1.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>
+            {' · '}
+            <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>
+          </p>
+        </div>
+      </div>
+      <ul className="route-list">
+        {curatedRoutes.map((route) => {
+          const inUse = [...route.stopIds].sort().join(',') === stopKey
+          const start = startPoints.find((point) => point.id === route.startId)
+          return (
+            <li key={route.id} className="route-item">
+              <div className="route-item__text">
+                <strong lang={language}>{pickName(language, route)}</strong>
+                <span className="alt-name">{otherName(language, route)}</span>
+                <p>{language === 'bn' ? route.descriptionBn : route.description}</p>
+                <small>
+                  {t(language, 'stopsCount', { n: formatNumber(language, route.stopIds.length) })}
+                  {start && ` · ${t(language, 'startFrom')}: ${pickName(language, start)}`}
+                </small>
+              </div>
+              {inUse ? (
+                <span className="badge badge--emerald">{t(language, 'routeInUse')}</span>
+              ) : (
+                <button type="button" className="btn btn--quiet" onClick={() => onUseRoute(route)}>
+                  {t(language, 'useRoute')}
+                </button>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+
   return (
     <div className="tab-body">
+      {nearby ? <NearbyPandals {...nearby} /> : (
+        <div className="explore-location">
+          <button type="button" className="btn btn--quiet" onClick={onUseLocation} disabled={locating}>
+            <LocateFixed size={18} aria-hidden="true" /> {t(language, locating ? 'locating' : 'useMyLocation')}
+          </button>
+        </div>
+      )}
+      {locationNotice && <p className="hint hint--warn" role="alert">{locationNotice}</p>}
       <div className="search">
         <label className="search__field">
           <Search size={18} aria-hidden="true" />
@@ -91,57 +158,7 @@ export function ExploreTab(props: ExploreTabProps) {
         ))}
       </div>
 
-      {!filtering && (
-        <section className="routes" aria-labelledby="routes-heading">
-          <div className="routes__head">
-            <figure className="strip">
-              <img
-                src={`${import.meta.env.BASE_URL}images/puja-kolkata.webp`}
-                width={720}
-                height={960}
-                alt={t(language, 'photoCaption')}
-                loading="lazy"
-                decoding="async"
-              />
-            </figure>
-            <div className="routes__intro">
-              <h2 id="routes-heading" className="section-title">{t(language, 'suggestedRoutes')}</h2>
-              <p className="strip__credit">
-                {t(language, 'photoCredit')}{' '}
-                <a href="https://commons.wikimedia.org/wiki/File:Kolkata_Durga_Puja_Pandle_1.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>
-                {' · '}
-                <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>
-              </p>
-            </div>
-          </div>
-          <ul className="route-list">
-            {curatedRoutes.map((route) => {
-              const inUse = [...route.stopIds].sort().join(',') === stopKey
-              const start = startPoints.find((point) => point.id === route.startId)
-              return (
-                <li key={route.id} className="route-item">
-                  <div className="route-item__text">
-                    <strong lang={language}>{pickName(language, route)}</strong>
-                    <span className="alt-name">{otherName(language, route)}</span>
-                    <p>{language === 'bn' ? route.descriptionBn : route.description}</p>
-                    <small>
-                      {t(language, 'stopsCount', { n: formatNumber(language, route.stopIds.length) })}
-                      {start && ` · ${t(language, 'startFrom')}: ${pickName(language, start)}`}
-                    </small>
-                  </div>
-                  {inUse ? (
-                    <span className="badge badge--emerald">{t(language, 'routeInUse')}</span>
-                  ) : (
-                    <button type="button" className="btn btn--quiet" onClick={() => onUseRoute(route)}>
-                      {t(language, 'useRoute')}
-                    </button>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        </section>
-      )}
+      {!nearby && curatedSection}
 
       <section aria-labelledby="catalogue-heading" className="catalogue">
         <div className="catalogue__head">
@@ -208,6 +225,7 @@ export function ExploreTab(props: ExploreTabProps) {
           </ul>
         )}
       </section>
+      {nearby && curatedSection}
     </div>
   )
 }

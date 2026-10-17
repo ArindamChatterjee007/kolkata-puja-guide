@@ -1,7 +1,8 @@
 import type { Coordinate, CrowdReport, Language, Pace, Pandal, TravelPreference, Visit } from '../types'
-import { haversineMetres } from '../domain/geo'
+import { haversineMetres, isCoordinate } from '../domain/geo'
 import type { LegEstimate } from '../domain/travel'
 import type { RoutePlan } from '../domain/route'
+import type { DevicePosition } from '../hooks/useGeolocation'
 import { REPORT_TTL_MS } from '../domain/crowd'
 import { formatNumber, formatRangeDigits, preferenceLabel, t } from '../i18n'
 
@@ -10,8 +11,40 @@ export const PLANNING_BOUNDS = Object.freeze({
 })
 
 export function isInPlanningArea(point: Coordinate): boolean {
-  return point.lat >= PLANNING_BOUNDS.south && point.lat <= PLANNING_BOUNDS.north
+  return isCoordinate(point) && point.lat >= PLANNING_BOUNDS.south && point.lat <= PLANNING_BOUNDS.north
     && point.lng >= PLANNING_BOUNDS.west && point.lng <= PLANNING_BOUNDS.east
+}
+
+export const PLANNING_FIX_LIMITS = Object.freeze({ maxAccuracyMetres: 200, maxAgeMs: 60_000, futureToleranceMs: 5_000 })
+export const PLANNING_ORIGIN_JITTER_METRES = 20
+export const NEARBY_RADIUS_METRES = 3_000
+export const NEARBY_STOP_LIMIT = 4
+
+export function planningFixIssue(position: DevicePosition, now: number): 'invalid' | 'outside' | 'stale' | 'inaccurate' | null {
+  if (!isCoordinate(position) || !Number.isFinite(position.accuracyMetres) || position.accuracyMetres < 0
+    || !Number.isFinite(position.at) || position.at < 0 || !Number.isFinite(now)) return 'invalid'
+  if (!isInPlanningArea(position)) return 'outside'
+  if (position.at > now + PLANNING_FIX_LIMITS.futureToleranceMs || now - position.at > PLANNING_FIX_LIMITS.maxAgeMs) return 'stale'
+  if (position.accuracyMetres > PLANNING_FIX_LIMITS.maxAccuracyMetres) return 'inaccurate'
+  return null
+}
+
+export function deviceOriginKey(point: Coordinate): string {
+  return `device:${point.lat.toFixed(3)},${point.lng.toFixed(3)}`
+}
+
+export interface NearbyCandidates {
+  withinRadius: boolean
+  candidates: { pandal: Pandal; distanceMetres: number }[]
+}
+
+export function nearbyPandals(pandals: readonly Pandal[], visits: readonly Visit[], origin: Coordinate): NearbyCandidates {
+  if (!isInPlanningArea(origin)) return { withinRadius: false, candidates: [] }
+  const visited = new Set(visits.map((visit) => visit.pandalId))
+  const closest = sortPandals(pandals.filter((pandal) => !visited.has(pandal.id)), 'nearest', 'en', origin)
+    .map((pandal) => ({ pandal, distanceMetres: haversineMetres(origin, pandal) }))
+  const nearby = closest.filter((candidate) => candidate.distanceMetres <= NEARBY_RADIUS_METRES)
+  return { withinRadius: nearby.length > 0, candidates: (nearby.length ? nearby : closest).slice(0, NEARBY_STOP_LIMIT) }
 }
 
 // Folds common Bengali-to-Latin spelling variants (Sovabazar/Shobhabazar, Kumartuli/Kumortuli).
@@ -52,7 +85,8 @@ export function sortPandals(
   if (mode === 'name') return list.sort(byName)
   if (mode === 'popular') return list.sort((a, b) => b.popularity - a.popularity || byName(a, b))
   if (mode === 'nearest' && origin) {
-    return list.sort((a, b) => haversineMetres(origin, a) - haversineMetres(origin, b) || byName(a, b))
+    return list.sort((first, second) => haversineMetres(origin, first) - haversineMetres(origin, second)
+      || first.id.localeCompare(second.id, 'en'))
   }
   return list.sort((a, b) => zoneOrder.indexOf(a.zone) - zoneOrder.indexOf(b.zone) || byName(a, b))
 }
@@ -83,6 +117,7 @@ export interface PlanSettings {
   pace: Pace
   availableMinutes: number
   originKey: string
+  deviceOrigin?: Coordinate
   departureKey: string
 }
 
@@ -90,6 +125,7 @@ export interface PlanSnapshot {
   plan: RoutePlan
   orderKey: string
   settingsKey: string
+  deviceOrigin?: Coordinate
   visitedKey: string
   reportsKey: string
   createdAt: number
@@ -100,7 +136,7 @@ export function orderKey(stopIds: readonly string[]): string {
 }
 
 export function settingsKey(settings: PlanSettings): string {
-  return [settings.preference, settings.pace, settings.availableMinutes, settings.originKey, settings.departureKey].join('|')
+  return [settings.preference, settings.pace, settings.availableMinutes, settings.deviceOrigin ? 'device' : settings.originKey, settings.departureKey].join('|')
 }
 
 export function visitedKey(stopIds: readonly string[], visits: readonly Visit[]): string {
@@ -116,13 +152,16 @@ export function reportsKey(stopIds: readonly string[], reports: readonly CrowdRe
     .map((report) => [report.pandalId, report.level, report.reportedAt]))
 }
 
-export type PlanFreshness = 'none' | 'fresh' | 'visits-changed' | 'changed'
+export type PlanFreshness = 'none' | 'fresh' | 'visits-changed' | 'location-changed' | 'changed'
 
 export function planFreshness(
   snapshot: PlanSnapshot | null, stopIds: readonly string[], visits: readonly Visit[], settings: PlanSettings,
   reports: readonly CrowdReport[],
 ): PlanFreshness {
   if (!snapshot) return 'none'
+  if (Boolean(snapshot.deviceOrigin) !== Boolean(settings.deviceOrigin)
+    || (snapshot.deviceOrigin && settings.deviceOrigin
+      && haversineMetres(snapshot.deviceOrigin, settings.deviceOrigin) > PLANNING_ORIGIN_JITTER_METRES)) return 'location-changed'
   if (snapshot.orderKey !== orderKey(stopIds) || snapshot.settingsKey !== settingsKey(settings)
     || snapshot.reportsKey !== reportsKey(stopIds, reports)) return 'changed'
   if (snapshot.visitedKey !== visitedKey(stopIds, visits)) return 'visits-changed'

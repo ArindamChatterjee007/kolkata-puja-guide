@@ -1,10 +1,37 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Page, TestInfo } from '@playwright/test'
 import { PANDALS, CURATED_ROUTES, START_POINTS } from '../../src/data/pandals'
-import { t } from '../../src/i18n'
+import { haversineMetres } from '../../src/domain/geo'
+import type { Coordinate } from '../../src/types'
+import { formatNumber, pickName, t } from '../../src/i18n'
 import {
   emitGps, expect, FIXED_TIME, geoCalls, ORIGIN, savedPlan, seedPlan, setOnline, setVisibility, sharedHash, test,
 } from './planner.fixture'
+
+const SOUTH_FIX = { lat: 22.52012345, lng: 88.34491234, accuracy: 20 }
+const NORTH_FIX = { lat: 22.601313, lng: 88.372586, accuracy: 8 }
+
+function closestListings(origin: Coordinate, visited: readonly string[] = []) {
+  return PANDALS.filter((pandal) => !visited.includes(pandal.id))
+    .sort((first, second) => haversineMetres(origin, first) - haversineMetres(origin, second)
+      || first.id.localeCompare(second.id, 'en'))
+}
+
+async function expectNearestPending(page: Page, origin: Coordinate) {
+  const saved = await savedPlan(page)
+  const visited = new Set(saved.visits.map((visit) => visit.pandalId))
+  const remaining = saved.stopIds.filter((id) => !visited.has(id)).map((id) => PANDALS.find((pandal) => pandal.id === id)!)
+  let position = origin
+  for (const stop of [...remaining]) {
+    for (const candidate of remaining) {
+      expect(haversineMetres(position, stop)).toBeLessThanOrEqual(haversineMetres(position, candidate))
+    }
+    remaining.splice(remaining.indexOf(stop), 1)
+    position = stop
+  }
+  const firstId = saved.stopIds.find((id) => !visited.has(id))
+  if (firstId) await expect(page.locator('.navigation-next strong')).toHaveText(PANDALS.find((pandal) => pandal.id === firstId)!.name)
+}
 
 test('English and Bengali controls update the document language and survive reload', async ({ page }) => {
   await page.goto('/')
@@ -456,6 +483,490 @@ test('location is requested only by a click and denial retains a usable landmark
   await expect(page.getByRole('button', { name: 'Stop journey', exact: true })).toBeEnabled()
 })
 
+for (const fix of [
+  { name: 'South Kalighat', lat: 22.5201, lng: 88.3449 },
+  { name: 'North Shyambazar', lat: 22.6013, lng: 88.3726 },
+]) {
+  test(`nearby suggestions use the full catalogue from ${fix.name} and reset old filters`, async ({ page }) => {
+    await page.goto('/')
+    const original = await savedPlan(page)
+    const expected = [...PANDALS].sort((first, second) => haversineMetres(fix, first) - haversineMetres(fix, second)
+      || first.id.localeCompare(second.id, 'en'))
+    await page.getByRole('tab', { name: 'Explore', exact: true }).click()
+    await page.getByRole('group', { name: 'Zone', exact: true }).getByRole('button', { name: 'North', exact: true }).click()
+    await page.getByRole('searchbox', { name: 'Search pandals' }).fill('Bagbazar')
+    await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+    await emitGps(page, { ...fix, accuracy: 20 })
+    const nearby = page.getByRole('region', { name: 'Nearby pandals', exact: true })
+    await expect(nearby).toBeVisible()
+    await expect(nearby).toContainText('From current location')
+    await expect(nearby).toContainText('Approx. straight-line distances')
+    await expect(nearby.locator('[data-nearby-pandal]').first()).toHaveAttribute('data-nearby-pandal', expected[0].id)
+    await expect(page.getByRole('searchbox', { name: 'Search pandals' })).toHaveValue('')
+    await expect(page.getByRole('combobox', { name: 'Sort by' })).toHaveValue('nearest')
+    await expect(page.getByRole('group', { name: 'Zone', exact: true }).getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('.pandal-row').first()).toHaveAttribute('data-pandal', expected[0].id)
+    expect(new Set((await savedPlan(page)).stopIds)).toEqual(new Set(original.stopIds))
+    await page.getByRole('combobox', { name: 'Sort by' }).selectOption('name')
+    await expect(page.getByRole('combobox', { name: 'Sort by' })).toHaveValue('name')
+    await page.getByRole('tab', { name: /^Your route/ }).click()
+    const expectedSelected = expected.filter((pandal) => original.stopIds.includes(pandal.id))
+    await expect(page.locator('.navigation-next strong')).toHaveText(expectedSelected[0].name)
+    await expect(page.locator('.nearby [data-nearby-pandal]').first()).toHaveAttribute('data-nearby-pandal', expected[0].id)
+    let position = { lat: fix.lat, lng: fix.lng }
+    const remaining = [...expectedSelected]
+    for (const id of (await savedPlan(page)).stopIds) {
+      const next = remaining.find((pandal) => pandal.id === id)!
+      for (const candidate of remaining) {
+        expect(haversineMetres(position, next)).toBeLessThanOrEqual(haversineMetres(position, candidate))
+      }
+      remaining.splice(remaining.indexOf(next), 1)
+      position = next
+    }
+    expect(remaining).toHaveLength(0)
+    expect(await geoCalls(page)).toEqual({ once: 1, started: 0, active: 0 })
+  })
+}
+
+test('nearby replacement preserves visits, updates suggestions immediately and navigates nearest-first', async ({ page }) => {
+  await page.clock.setFixedTime(FIXED_TIME)
+  const closest = closestListings(SOUTH_FIX)[0]
+  const selected = [...CURATED_ROUTES[0].stopIds, closest.id]
+  const visits = ['bagbazar', closest.id].map((pandalId) => ({ pandalId, at: FIXED_TIME.getTime(), method: 'manual' as const }))
+  await seedPlan(page, { stopIds: selected, visits, reports: [{ pandalId: 'bagbazar', level: 'heavy', reportedAt: FIXED_TIME.getTime() }] })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+  await emitGps(page, SOUTH_FIX)
+  await expect(page.locator('.stop-list > .is-visited .link-title')).toHaveText(['Bagbazar Sarbojanin', closest.name])
+  await expectNearestPending(page, SOUTH_FIX)
+  await expect(page.locator('.nearby [data-nearby-pandal]')).toHaveCount(4)
+  await expect(page.locator(`.nearby [data-nearby-pandal="${closest.id}"]`)).toHaveCount(0)
+  await page.getByRole('button', { name: t('en', 'unmarkVisitedFor', { name: closest.name }), exact: true }).click()
+  await expect(page.locator('.nearby [data-nearby-pandal]').first()).toHaveAttribute('data-nearby-pandal', closest.id)
+  await page.getByRole('button', { name: t('en', 'markVisitedFor', { name: closest.name }), exact: true }).click()
+  await expect(page.locator(`.nearby [data-nearby-pandal="${closest.id}"]`)).toHaveCount(0)
+  const before = await savedPlan(page)
+  await page.getByRole('button', { name: 'Use nearby route 4 stops', exact: true }).click()
+  const confirm = page.getByRole('dialog', { name: 'Replace your route?', exact: true })
+  await expect(confirm).toContainText('Visits and crowd reports are kept.')
+  await confirm.getByRole('button', { name: 'Cancel', exact: true }).click()
+  expect(await savedPlan(page)).toEqual(before)
+  await page.getByRole('button', { name: 'Use nearby route 4 stops', exact: true }).click()
+  await confirm.getByRole('button', { name: 'Replace', exact: true }).click()
+  await expect(page.locator('.estimate')).toBeVisible()
+  const expected = closestListings(SOUTH_FIX, before.visits.map((visit) => visit.pandalId)).slice(0, 4)
+  await expect.poll(async () => new Set((await savedPlan(page)).stopIds)).toEqual(new Set(expected.map((pandal) => pandal.id)))
+  await expectNearestPending(page, SOUTH_FIX)
+  const after = await savedPlan(page)
+  expect(after.visits).toEqual(before.visits)
+  expect(after.reports).toEqual(before.reports)
+  expect(after.startId).toBe(before.startId)
+  await expect(page.locator('.estimate__meta')).toContainText('from Your location')
+  const first = PANDALS.find((pandal) => pandal.id === after.stopIds[0])!
+  await page.locator('.navigation-next').getByRole('button', { name: t('en', 'navigateTo', { name: first.name }), exact: true }).click()
+  const navigation = page.getByRole('dialog', { name: 'Navigation', exact: true })
+  await expect(navigation.getByRole('combobox', { name: 'To', exact: true })).toHaveValue(first.name)
+  expect(new URL((await navigation.getByRole('link').getAttribute('href'))!).searchParams.has('origin')).toBe(false)
+  await navigation.press('Escape')
+  await page.getByRole('button', { name: 'Share route', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.__plannerQA.copies.length)).toBe(1)
+  const privateSurfaces = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage }, copies: window.__plannerQA.copies }))
+  for (const coordinate of [SOUTH_FIX.lat, SOUTH_FIX.lng]) expect(privateSurfaces).not.toContain(String(coordinate))
+  expect(await geoCalls(page)).toEqual({ once: 1, started: 0, active: 0 })
+  await page.reload()
+  expect(await savedPlan(page)).toEqual(after)
+  await expect(page.locator('.nearby')).toHaveCount(0)
+  expect(await geoCalls(page)).toEqual({ once: 0, started: 0, active: 0 })
+})
+
+test('nearby route applies directly to empty or identical pending selections', async ({ page }) => {
+  await seedPlan(page, { stopIds: [] })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+  await emitGps(page, SOUTH_FIX)
+  await page.getByRole('button', { name: 'Use nearby route 4 stops', exact: true }).click()
+  await expect(page.locator('.stop-list > li')).toHaveCount(4)
+  await expect(page.getByRole('dialog', { name: 'Replace your route?', exact: true })).toHaveCount(0)
+  await expectNearestPending(page, SOUTH_FIX)
+  await expect(page.getByRole('button', { name: 'Nearby route in use 4 stops', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Refresh nearby location', exact: true })).toBeEnabled()
+  const ordered = (await savedPlan(page)).stopIds
+  const first = PANDALS.find((pandal) => pandal.id === ordered[0])!
+  await page.getByRole('button', { name: t('en', 'moveDown', { name: first.name }), exact: true }).click()
+  await expect.poll(async () => (await savedPlan(page)).stopIds).not.toEqual(ordered)
+  await page.getByRole('button', { name: 'Use nearby route 4 stops', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Replace your route?', exact: true })).toHaveCount(0)
+  await expect.poll(async () => (await savedPlan(page)).stopIds).toEqual(ordered)
+  await expect(page.getByRole('button', { name: 'Nearby route in use 4 stops', exact: true })).toBeDisabled()
+  expect(await geoCalls(page)).toEqual({ once: 1, started: 0, active: 0 })
+})
+
+test('fresh location invalidates the old estimate and reorders only the selected pending stops', async ({ page }) => {
+  const selected = [...new Set([...closestListings(SOUTH_FIX).slice(0, 2), ...closestListings(NORTH_FIX).slice(0, 2)].map((pandal) => pandal.id))]
+  await seedPlan(page, { stopIds: selected })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+  await emitGps(page, SOUTH_FIX)
+  await page.getByRole('button', { name: 'Optimize route', exact: true }).click()
+  await expect(page.locator('.estimate')).toBeVisible()
+  await expectNearestPending(page, SOUTH_FIX)
+  const previous = (await savedPlan(page)).stopIds
+  await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+  await emitGps(page, NORTH_FIX)
+  await expect(page.locator('.estimate')).toHaveCount(0)
+  await expect(page.getByText(t('en', 'planLocationChanged'), { exact: true })).toBeVisible()
+  await expect(page.getByText(t('en', 'planChanged'), { exact: true })).toHaveCount(0)
+  expect(new Set((await savedPlan(page)).stopIds)).toEqual(new Set(selected))
+  expect((await savedPlan(page)).stopIds[0]).not.toBe(previous[0])
+  await expectNearestPending(page, NORTH_FIX)
+  await page.getByRole('button', { name: 'Re-optimize', exact: true }).click()
+  await expect(page.locator('.estimate__meta')).toContainText('from Your location')
+  expect((await savedPlan(page)).startId).toBe('start-blue-shyambazar')
+  expect(await geoCalls(page)).toEqual({ once: 2, started: 0, active: 0 })
+})
+
+for (const failure of ['denied', 'inaccurate', 'outside', 'stale', 'future', 'coordinate', 'accuracy'] as const) {
+  test(`planning fix ${failure} never labels a landmark as current or nearby`, async ({ page }) => {
+    await page.clock.setFixedTime(FIXED_TIME)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Optimize route', exact: true }).click()
+    const original = await savedPlan(page)
+    if (failure === 'denied') await page.evaluate(() => { window.__plannerQA.denied = true })
+    await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+    if (failure !== 'denied') await emitGps(page, {
+      ...SOUTH_FIX,
+      ...(failure === 'inaccurate' ? { accuracy: 5000 } : failure === 'outside' ? { lat: 12.9716, lng: 77.5946 }
+        : failure === 'stale' ? { at: FIXED_TIME.getTime() - 60_001 } : failure === 'future' ? { at: FIXED_TIME.getTime() + 30_000 }
+          : failure === 'coordinate' ? { lat: NaN } : { accuracy: NaN }),
+    })
+    await expect(page.getByRole('region', { name: 'Start from', exact: true }).getByRole('alert')).toContainText(failure === 'denied' ? 'Location permission was denied'
+      : failure === 'inaccurate' ? 'GPS accuracy is ±5,000 m' : failure === 'outside' ? 'outside the Kolkata planning area'
+        : failure === 'stale' || failure === 'future' ? 'older than 60 seconds or has an invalid time' : 'Location is unavailable')
+    await expect(page.locator('.nearby')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Use my location', exact: true })).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.locator('.estimate__meta')).not.toContainText('Your location')
+    expect(await savedPlan(page)).toEqual(original)
+    expect(await geoCalls(page)).toEqual({ once: 1, started: 0, active: 0 })
+  })
+
+  test(`Refresh ${failure} retains the accepted South anchor instead of upgrading a rejected fix`, async ({ page }) => {
+    await page.clock.setFixedTime(FIXED_TIME)
+    await seedPlan(page, { stopIds: closestListings(SOUTH_FIX).slice(0, 4).map((pandal) => pandal.id),
+      visits: [{ pandalId: 'bagbazar', at: FIXED_TIME.getTime(), method: 'manual' }], availableMinutes: 480 })
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+    await emitGps(page, SOUTH_FIX)
+    await page.getByRole('button', { name: 'Optimize route', exact: true }).click()
+    const original = await savedPlan(page)
+    if (failure === 'denied') await page.evaluate(() => { window.__plannerQA.denied = true })
+    await page.getByRole('button', { name: 'Refresh nearby location', exact: true }).click()
+    if (failure !== 'denied') await emitGps(page, {
+      ...NORTH_FIX,
+      ...(failure === 'inaccurate' ? { accuracy: 5000 } : failure === 'outside' ? { lat: 12.9716, lng: 77.5946 }
+        : failure === 'stale' ? { at: FIXED_TIME.getTime() - 60_001 } : failure === 'future' ? { at: FIXED_TIME.getTime() + 30_000 }
+          : failure === 'coordinate' ? { lat: NaN } : { accuracy: NaN }),
+    })
+    await expect(page.getByRole('region', { name: 'Start from', exact: true }).getByRole('alert')).toContainText('Last known location retained.')
+    await expect(page.locator('.nearby').getByRole('status')).toContainText('Last known location')
+    await expect(page.locator('.nearby [data-nearby-pandal]').first()).toHaveAttribute('data-nearby-pandal', closestListings(SOUTH_FIX)[0].id)
+    await expect(page.locator('.estimate__meta')).toContainText('from Last known location')
+    await expect(page.getByRole('combobox', { name: 'Alternative start', exact: true })).toHaveValue('start-blue-shyambazar')
+    await page.getByRole('button', { name: 'Re-optimize', exact: true }).click()
+    await expectNearestPending(page, SOUTH_FIX)
+    expect(await savedPlan(page)).toEqual(original)
+    expect(await geoCalls(page)).toEqual({ once: 2, started: 0, active: 0 })
+  })
+}
+
+test('Refresh accepts a new North location while preserving visits and the user chosen sort', async ({ page }) => {
+  await page.clock.install({ time: FIXED_TIME })
+  await page.clock.pauseAt(new Date(FIXED_TIME.getTime() + 1_000))
+  const selected = [...new Set([...closestListings(SOUTH_FIX).slice(0, 2), ...closestListings(NORTH_FIX).slice(0, 2)].map((pandal) => pandal.id))]
+  await seedPlan(page, { stopIds: selected, visits: [{ pandalId: 'bagbazar', at: FIXED_TIME.getTime(), method: 'manual' }],
+    reports: [{ pandalId: selected[0], level: 'heavy', reportedAt: FIXED_TIME.getTime() }] })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+  await emitGps(page, SOUTH_FIX)
+  await page.getByRole('button', { name: 'Optimize route', exact: true }).click()
+  const original = await savedPlan(page)
+  await page.getByRole('tab', { name: 'Explore', exact: true }).click()
+  await page.getByRole('combobox', { name: 'Sort by', exact: true }).selectOption('name')
+  await page.clock.fastForward(65_000)
+  await expect(page.locator('.nearby').getByRole('status')).toContainText('Last known location')
+  await page.getByRole('button', { name: 'Refresh nearby location', exact: true }).click()
+  await emitGps(page, NORTH_FIX)
+  await expect(page.locator('.nearby').getByRole('status')).toContainText('From current location')
+  await expect(page.locator('.nearby [data-nearby-pandal]').first()).toHaveAttribute('data-nearby-pandal', closestListings(NORTH_FIX, ['bagbazar'])[0].id)
+  await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toHaveValue('name')
+  await page.getByRole('tab', { name: /^Your route/ }).click()
+  await expect(page.locator('.estimate')).toHaveCount(0)
+  await expect(page.getByText(t('en', 'planLocationChanged'), { exact: true })).toBeVisible()
+  await expectNearestPending(page, NORTH_FIX)
+  await page.getByRole('button', { name: 'Re-optimize', exact: true }).click()
+  await expect(page.locator('.estimate__meta')).toContainText('from Your location')
+  const refreshed = await savedPlan(page)
+  expect(new Set(refreshed.stopIds)).toEqual(new Set(original.stopIds))
+  expect(refreshed.visits).toEqual(original.visits)
+  expect(refreshed.reports).toEqual(original.reports)
+  expect(refreshed.startId).toBe(original.startId)
+  expect(await geoCalls(page)).toEqual({ once: 2, started: 0, active: 0 })
+})
+
+test('watch movement keeps route order stable and names location changes while ignoring small jitter', async ({ page }) => {
+  await page.clock.setFixedTime(FIXED_TIME)
+  const initial = { ...SOUTH_FIX, lat: 22.52049 }
+  await seedPlan(page, { stopIds: closestListings(initial).slice(0, 4).map((pandal) => pandal.id),
+    visits: [{ pandalId: 'bagbazar', at: FIXED_TIME.getTime(), method: 'manual' }] })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+  await emitGps(page, initial)
+  await page.getByRole('button', { name: 'Optimize route', exact: true }).click()
+  await expect(page.locator('.estimate')).toBeVisible()
+  await page.getByRole('button', { name: 'Start journey', exact: true }).click()
+  await page.getByRole('switch').press('Space')
+  await expect.poll(() => geoCalls(page)).toEqual({ once: 1, started: 1, active: 1 })
+  const before = await savedPlan(page)
+  const jitter = { ...initial, lat: initial.lat + 0.0001 }
+  await emitGps(page, jitter)
+  await expect(page.locator('.nearby__distance').first()).toHaveText(t('en', 'distanceKm', { km: formatNumber('en', haversineMetres(jitter, closestListings(jitter)[0]) / 1_000, 2) }))
+  await expect(page.locator('.estimate')).toBeVisible()
+  await expect(page.getByText(t('en', 'planLocationChanged'), { exact: true })).toHaveCount(0)
+  expect(await savedPlan(page)).toEqual(before)
+  const moved = { ...initial, lat: initial.lat + 0.00135 }
+  await emitGps(page, moved)
+  await expect(page.locator('.estimate')).toHaveCount(0)
+  await expect(page.getByRole('status').filter({ hasText: t('en', 'planLocationChanged') })).toBeVisible()
+  await expect(page.getByText(t('en', 'planChanged'), { exact: true })).toHaveCount(0)
+  await expect(page.locator('.nearby').getByRole('status')).toContainText('From current location')
+  expect(await savedPlan(page)).toEqual(before)
+  await page.getByRole('button', { name: 'Re-optimize', exact: true }).click()
+  await expectNearestPending(page, moved)
+  await expect(page.locator('.estimate__meta')).toContainText('from Your location')
+  await expect(page.getByText(t('en', 'planLocationChanged'), { exact: true })).toHaveCount(0)
+  expect((await savedPlan(page)).visits).toEqual(before.visits)
+  expect(await geoCalls(page)).toEqual({ once: 1, started: 1, active: 1 })
+})
+
+for (const action of ['manual start', 'Clear all stops'] as const) {
+  test(`${action} releases the accepted planner anchor before a later denied request`, async ({ page }) => {
+    await seedPlan(page)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+    await emitGps(page, SOUTH_FIX)
+    await expect(page.getByRole('combobox', { name: 'Alternative start', exact: true })).toHaveValue('start-blue-shyambazar')
+    if (action === 'manual start') await page.getByRole('combobox', { name: 'Alternative start', exact: true }).selectOption('start-blue-esplanade')
+    else await page.getByRole('button', { name: action, exact: true }).click()
+    await expect(page.locator('.nearby')).toHaveCount(0)
+    await page.evaluate(() => { window.__plannerQA.denied = true })
+    await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Start from', exact: true }).getByRole('alert')).toContainText('Using the selected start landmark.')
+    await expect(page.getByRole('button', { name: 'Use my location', exact: true })).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.locator('.nearby')).toHaveCount(0)
+    if (action === 'manual start') {
+      await page.getByRole('button', { name: 'Optimize route', exact: true }).click()
+      await expect(page.locator('.estimate__meta')).toContainText('from Esplanade Metro area')
+    } else await expect(page.locator('.stop-list > li')).toHaveCount(0)
+    expect(await geoCalls(page)).toEqual({ once: 2, started: 0, active: 0 })
+  })
+}
+
+test('nearby fallback labels distant results as closest listed with their real approximate kilometres', async ({ page }) => {
+  const distant = { lat: 22.41, lng: 88.21, accuracy: 30 }
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+  await emitGps(page, distant)
+  const nearby = page.getByRole('region', { name: 'Closest listed pandals', exact: true })
+  await expect(nearby).toBeVisible()
+  await expect(nearby).toContainText('No listed pandals within 3 km.')
+  const closest = closestListings(distant)[0]
+  await expect(nearby.locator('[data-nearby-pandal]').first()).toHaveAttribute('data-nearby-pandal', closest.id)
+  await expect(nearby.locator('.nearby__distance').first()).toHaveText(t('en', 'distanceKm', { km: formatNumber('en', haversineMetres(distant, closest) / 1_000, 2) }))
+  await expect(nearby.getByRole('button', { name: 'Use closest route 4 stops', exact: true })).toBeEnabled()
+  await expect(page.getByRole('heading', { name: 'Nearby pandals', exact: true })).toHaveCount(0)
+})
+
+for (const action of ['manual start', 'Forget location'] as const) {
+  test(`location intent ignores a late GPS response after ${action}`, async ({ page }) => {
+    await page.goto('/')
+    const original = await savedPlan(page)
+    await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+    const start = [...START_POINTS].sort((first, second) => haversineMetres(SOUTH_FIX, first) - haversineMetres(SOUTH_FIX, second))[0]
+    if (action === 'manual start') await page.getByRole('combobox', { name: 'Start landmark', exact: true }).selectOption(start.id)
+    else await page.getByRole('button', { name: 'Forget location', exact: true }).click()
+    await emitGps(page, SOUTH_FIX)
+    await expect(page.locator('.nearby')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Use my location', exact: true })).toHaveAttribute('aria-pressed', 'false')
+    expect((await savedPlan(page)).stopIds).toEqual(original.stopIds)
+    expect((await savedPlan(page)).startId).toBe(action === 'manual start' ? start.id : original.startId)
+    if (action === 'Forget location') await expect(page.getByRole('button', { name: 'Forget location', exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+    await emitGps(page, NORTH_FIX)
+    await expect(page.locator('.nearby')).toBeVisible()
+    await expectNearestPending(page, NORTH_FIX)
+    expect(await geoCalls(page)).toEqual({ once: 2, started: 0, active: 0 })
+  })
+}
+
+test('background guidance fixes preserve manual order and nearby confirmation uses the latest fix', async ({ page }) => {
+  await seedPlan(page, { stopIds: [...CURATED_ROUTES[0].stopIds, closestListings(SOUTH_FIX)[0].id] })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+  await emitGps(page, NORTH_FIX)
+  await page.getByRole('button', { name: 'Optimize route', exact: true }).click()
+  await page.locator('.stop-list').getByRole('button', { name: 'Navigate to Bagbazar Sarbojanin', exact: true }).click()
+  const navigation = page.getByRole('dialog', { name: 'Navigation', exact: true })
+  await navigation.getByRole('radio', { name: 'Walk', exact: true }).click()
+  await navigation.getByRole('button', { name: 'Show walking routes', exact: true }).click()
+  await expect(page.locator('.directions__summary')).toBeVisible({ timeout: 30_000 })
+  await page.getByRole('button', { name: 'Start walking', exact: true }).click()
+  await expect.poll(() => geoCalls(page)).toEqual({ once: 1, started: 1, active: 1 })
+  await page.getByRole('tab', { name: /^Your route/ }).click()
+  const first = PANDALS.find((pandal) => pandal.id === (CURATED_ROUTES[0].stopIds[0]))!
+  await page.getByRole('button', { name: t('en', 'moveDown', { name: first.name }), exact: true }).click()
+  const manualOrder = (await savedPlan(page)).stopIds
+  await emitGps(page, SOUTH_FIX)
+  await expect(page.locator('.nearby [data-nearby-pandal]').first()).toHaveAttribute('data-nearby-pandal', closestListings(SOUTH_FIX)[0].id)
+  expect((await savedPlan(page)).stopIds).toEqual(manualOrder)
+  await expect(page.locator('.estimate')).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Directions', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Pause guidance', exact: true })).toBeVisible()
+  await expect(page.locator('.street-route')).toHaveCount(1)
+  await page.getByRole('tab', { name: /^Your route/ }).click()
+  await page.getByRole('button', { name: 'Use nearby route 4 stops', exact: true }).click()
+  const confirm = page.getByRole('dialog', { name: 'Replace your route?', exact: true })
+  await expect(confirm).toBeVisible()
+  await emitGps(page, NORTH_FIX)
+  await expect(page.locator('.nearby [data-nearby-pandal]').first()).toHaveAttribute('data-nearby-pandal', closestListings(NORTH_FIX)[0].id)
+  await confirm.getByRole('button', { name: 'Replace', exact: true }).click()
+  await expect.poll(async () => new Set((await savedPlan(page)).stopIds)).toEqual(new Set(closestListings(NORTH_FIX).slice(0, 4).map((pandal) => pandal.id)))
+  await expectNearestPending(page, NORTH_FIX)
+  await expect(page.getByRole('tab', { name: 'Directions', exact: true })).toHaveCount(0)
+  await expect.poll(() => geoCalls(page)).toEqual({ once: 1, started: 1, active: 0 })
+  expect((await savedPlan(page)).visits).toEqual([])
+})
+
+test('accepted South location stays the planner origin after 65 seconds without requesting GPS', async ({ page }) => {
+  await page.clock.install({ time: FIXED_TIME })
+  await page.clock.pauseAt(new Date(FIXED_TIME.getTime() + 1_000))
+  await seedPlan(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+  await emitGps(page, SOUTH_FIX)
+  await page.getByRole('button', { name: 'Use nearby route 4 stops', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Replace your route?', exact: true }).getByRole('button', { name: 'Replace', exact: true }).click()
+  await expectNearestPending(page, SOUTH_FIX)
+  const accepted = await savedPlan(page)
+  await setOnline(page, false)
+  await page.clock.fastForward(65_000)
+  await page.getByRole('button', { name: 'Re-optimize', exact: true }).click()
+  await expectNearestPending(page, SOUTH_FIX)
+  expect(await savedPlan(page)).toEqual(accepted)
+  await expect(page.locator('.nearby')).toContainText('Last known location')
+  await expect(page.locator('.nearby [data-nearby-pandal]').first()).toHaveAttribute('data-nearby-pandal', closestListings(SOUTH_FIX)[0].id)
+  await expect(page.locator('.estimate__meta')).toContainText('from Last known location')
+  await expect(page.getByRole('button', { name: 'Use my location', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('region', { name: 'Start from', exact: true }).getByRole('alert')).toHaveCount(0)
+  await expect(page.locator('.nearby').getByRole('status')).toHaveAttribute('aria-live', 'polite')
+  expect(await geoCalls(page)).toEqual({ once: 1, started: 0, active: 0 })
+})
+
+test('nearby confirmation retains an accepted location as it ages and Forget releases it', async ({ page }) => {
+  await page.clock.install({ time: FIXED_TIME })
+  await page.clock.pauseAt(new Date(FIXED_TIME.getTime() + 1_000))
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Use my location', exact: true }).click()
+  await emitGps(page, SOUTH_FIX)
+  const before = await savedPlan(page)
+  await page.getByRole('button', { name: 'Use nearby route 4 stops', exact: true }).click()
+  const confirm = page.getByRole('dialog', { name: 'Replace your route?', exact: true })
+  await expect(confirm).toBeVisible()
+  await page.clock.fastForward(65_000)
+  await expect(page.locator('.nearby')).toContainText('Last known location')
+  await confirm.getByRole('button', { name: 'Replace', exact: true }).click()
+  await expectNearestPending(page, SOUTH_FIX)
+  expect((await savedPlan(page)).visits).toEqual(before.visits)
+  expect((await savedPlan(page)).startId).toBe(before.startId)
+  await expect(page.locator('.estimate__meta')).toContainText('from Last known location')
+  await expect(page.getByRole('region', { name: 'Start from', exact: true }).getByRole('alert')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Forget location', exact: true }).click()
+  await expect(page.locator('.nearby')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Use my location', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByRole('dialog', { name: 'Replace your route?', exact: true })).toHaveCount(0)
+  expect(await geoCalls(page)).toEqual({ once: 1, started: 0, active: 0 })
+})
+
+for (const viewport of [
+  { width: 320, height: 568, language: 'bn', visibleCandidates: 2 },
+  { width: 320, height: 844, language: 'bn', visibleCandidates: 4 },
+  { width: 390, height: 844, language: 'en', visibleCandidates: 4 },
+  { width: 1440, height: 1000, language: 'en', visibleCandidates: 4 },
+] as const) {
+  test(`nearby South ${viewport.width}x${viewport.height}px ${viewport.language} keeps Navigate visible and controls at 44px`, async ({ page }, testInfo) => {
+    const language = viewport.language
+    await page.clock.install({ time: FIXED_TIME })
+    await page.clock.pauseAt(new Date(FIXED_TIME.getTime() + 1_000))
+    await page.setViewportSize({ width: viewport.width, height: viewport.height })
+    await seedPlan(page, { language, stopIds: [...CURATED_ROUTES[0].stopIds] })
+    await page.goto('/')
+    await page.getByRole('button', { name: t(language, 'useMyLocation'), exact: true }).click()
+    await emitGps(page, SOUTH_FIX)
+    if (viewport.width < 760) await expect(page.locator('.app')).toHaveAttribute('data-layout', 'list')
+    await expect(page.locator('.nearby')).toBeVisible()
+    await expect(page.locator('.nearby [data-nearby-pandal]').first()).toBeInViewport()
+    const nearbyAction = `${t(language, 'useNearbyRoute')} ${t(language, 'stopsCount', { n: formatNumber(language, 4) })}`
+    await expect(page.getByRole('button', { name: nearbyAction, exact: true })).toBeInViewport()
+    await expect(page.locator('.nearby [data-nearby-pandal]').first()).toHaveAttribute('data-nearby-pandal', closestListings(SOUTH_FIX)[0].id)
+    await page.getByRole('button', { name: nearbyAction, exact: true }).click()
+    await page.getByRole('dialog', { name: t(language, 'replaceTitle'), exact: true }).getByRole('button', { name: t(language, 'replace'), exact: true }).click()
+    await expect(page.locator('.navigation-next strong')).toHaveText(pickName(language, closestListings(SOUTH_FIX)[0]))
+    await expect(page.locator('.nearby')).toContainText(t(language, 'nearbyDistanceNote', { m: formatNumber(language, SOUTH_FIX.accuracy) }))
+    await page.evaluate(async () => { await document.fonts.ready })
+    await expect.poll(() => page.locator('.panel__body').evaluate((element) => element.scrollTop)).toBe(0)
+    await expect(page.locator('dialog.festival-intro[open]')).toHaveCount(0)
+    await page.clock.fastForward(65_000)
+    await expect(page.locator('.nearby').getByRole('status')).toContainText(t(language, 'lastKnownLocation'))
+    await expect(page.locator('.nearby').getByRole('status')).toHaveAttribute('aria-live', 'polite')
+    await expect(page.locator('.nearby')).toContainText(language === 'bn' ? 'শেষ আপডেট' : 'Last updated')
+    const geometry = await page.evaluate(() => {
+      const panel = document.querySelector('.panel')!.getBoundingClientRect()
+      const heading = document.querySelector('#nearby-heading')!.getBoundingClientRect()
+      const candidates = [...document.querySelectorAll('.nearby__list li')]
+      const buttons = [...document.querySelectorAll<HTMLButtonElement>('.nearby button, .navigation-next button')].map((button) => {
+        const bounds = button.getBoundingClientRect()
+        return { label: button.textContent?.trim() || button.getAttribute('aria-label'),
+          candidateIndex: candidates.findIndex((candidate) => candidate.contains(button)),
+          left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom,
+          width: bounds.width, height: bounds.height, clientWidth: button.clientWidth, scrollWidth: button.scrollWidth,
+          paintedTarget: document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)?.closest('button') === button }
+      })
+      const overlaps = buttons.flatMap((button, index) => buttons.slice(index + 1).filter((other) =>
+        button.left < other.right && button.right > other.left && button.top < other.bottom && button.bottom > other.top)
+        .map((other) => [button.label, other.label]))
+      return { width: innerWidth, height: innerHeight, documentWidth: document.documentElement.scrollWidth,
+        panel: { left: panel.left, right: panel.right }, headingTop: heading.top, buttons, overlaps }
+    })
+    expect(geometry.width).toBe(viewport.width)
+    expect(geometry.documentWidth).toBeLessThanOrEqual(viewport.width)
+    expect(geometry.headingTop).toBeLessThan(viewport.height - 44)
+    expect(geometry.overlaps).toEqual([])
+    for (const button of geometry.buttons) {
+      expect(button.width, button.label ?? '').toBeGreaterThanOrEqual(43.5)
+      expect(button.height, button.label ?? '').toBeGreaterThanOrEqual(43.5)
+      expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth)
+      expect(button.left).toBeGreaterThanOrEqual(geometry.panel.left)
+      expect(button.right).toBeLessThanOrEqual(geometry.panel.right)
+      if (button.candidateIndex < viewport.visibleCandidates) {
+        expect(button.bottom).toBeLessThanOrEqual(viewport.height)
+        expect(button.paintedTarget, button.label ?? '').toBe(true)
+      }
+    }
+    await testInfo.attach('nearby-geometry', { contentType: 'application/json', body: JSON.stringify(geometry, null, 2) })
+    const screenshot = testInfo.outputPath(`nearby-last-known-${viewport.width}x${viewport.height}-${language}.png`)
+    await page.screenshot({ path: screenshot, animations: 'disabled', fullPage: true })
+    await testInfo.attach('nearby-last-known-location', { path: screenshot, contentType: 'image/png' })
+  })
+}
+
 test('precise GPS stays out of storage, share payloads and outbound directions', async ({ page }) => {
   await seedPlan(page)
   await page.goto('/?qa=synthetic-navigation')
@@ -494,7 +1005,10 @@ test('precise GPS stays out of storage, share payloads and outbound directions',
   const fields = new URLSearchParams(shared.hash.slice('#plan='.length))
   expect([...fields.keys()].sort()).toEqual(['hours', 'pace', 'preference', 'start', 'stops', 'v'])
   expect(fields.get('start')).toBe('start-blue-shyambazar')
-  expect(fields.get('stops')).toBe('bagbazar,kumartuli-park')
+  const nearestOrder = PANDALS.filter((pandal) => ['bagbazar', 'kumartuli-park'].includes(pandal.id))
+    .sort((first, second) => haversineMetres(precise, first) - haversineMetres(precise, second))
+    .map((pandal) => pandal.id)
+  expect(fields.get('stops')).toBe(nearestOrder.join(','))
   await page.evaluate(() => { window.__plannerQA.nativeShare = true })
   await page.getByRole('button', { name: 'Share route', exact: true }).click()
   await expect.poll(() => page.evaluate(() => window.__plannerQA.shares)).toEqual([copy])
@@ -504,6 +1018,7 @@ test('precise GPS stays out of storage, share payloads and outbound directions',
     expect(copy).not.toContain(value)
   }
   const saved = await savedPlan(page)
+  expect(saved.stopIds).toEqual(nearestOrder)
   expect(Object.keys(saved).sort()).toEqual([
     'availableMinutes', 'language', 'pace', 'preference', 'reports', 'startId', 'stopIds', 'version', 'visits',
   ])

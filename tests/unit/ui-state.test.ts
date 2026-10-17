@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PANDALS, START_POINTS } from '../../src/data/pandals'
 import { getIstHour, isFreshCrowdReport, REPORT_TTL_MS } from '../../src/domain/crowd'
+import { haversineMetres } from '../../src/domain/geo'
 import { planRoute } from '../../src/domain/route'
 import { METRO_STATIONS } from '../../src/data/metro'
 import { defaultSavedPlan, encodeSharedPlan } from '../../src/domain/storage'
@@ -9,6 +10,7 @@ import {
   applyOptimizedOrder, buildShareUrl, clampStops, departureOptions, directionsUrl, explainLeg, foldLatin,
   isInPlanningArea, matchesPandal, moveItem, nextPendingStopId, orderKey, planFreshness, reportTimeLeftMs,
   reportsKey, resolveDeparture, settingsKey, sortPandals, visitedKey, navigationUrl, navigationMode, navigationQuery,
+  deviceOriginKey, nearbyPandals, planningFixIssue, NEARBY_RADIUS_METRES, PLANNING_FIX_LIMITS,
 } from '../../src/components/uiState'
 import type { PlanSettings } from '../../src/components/uiState'
 import { formatClock, formatMinuteRange, formatNumber, t } from '../../src/i18n'
@@ -131,6 +133,76 @@ describe('plan list helpers', () => {
     const known = new Set(['a', 'b', 'c'])
     expect(clampStops(['a', 'zzz', 'a', 'c'], known)).toEqual(['a', 'c'])
     expect(clampStops(Array.from({ length: 20 }, (_, index) => `s${index}`), new Set(Array.from({ length: 20 }, (_, index) => `s${index}`)))).toHaveLength(12)
+  })
+})
+
+describe('nearby planning', () => {
+  const south = { lat: 22.5201, lng: 88.3449, accuracyMetres: 20, at: now }
+  const north = { lat: 22.6013, lng: 88.3726, accuracyMetres: 20, at: now }
+
+  it.each([south, north])('ranks the full catalogue from the actual fix and excludes completed visits', (origin) => {
+    const original = JSON.stringify(PANDALS)
+    const expected = [...PANDALS].sort((first, second) => haversineMetres(origin, first) - haversineMetres(origin, second)
+      || first.id.localeCompare(second.id, 'en'))
+    const visits = [{ pandalId: expected[0].id, at: now, method: 'manual' as const }]
+    const result = nearbyPandals(PANDALS, visits, origin)
+    expect(result.withinRadius).toBe(true)
+    expect(result.candidates.map(({ pandal }) => pandal.id)).toEqual(expected.slice(1, 5).map((pandal) => pandal.id))
+    expect(result.candidates.every(({ distanceMetres }) => distanceMetres <= NEARBY_RADIUS_METRES)).toBe(true)
+    expect(result.candidates[0].distanceMetres).toBe(haversineMetres(origin, expected[1]))
+    expect(nearbyPandals(PANDALS, [], origin).candidates[0].pandal.id).toBe(expected[0].id)
+    expect(JSON.stringify(PANDALS)).toBe(original)
+    expect(visits).toHaveLength(1)
+  })
+
+  it('labels distant catalogue matches as closest, and handles an exhausted catalogue', () => {
+    const result = nearbyPandals(PANDALS, [], { lat: 22.41, lng: 88.21 })
+    expect(result.withinRadius).toBe(false)
+    expect(result.candidates).toHaveLength(4)
+    expect(result.candidates.every(({ distanceMetres }) => distanceMetres > NEARBY_RADIUS_METRES)).toBe(true)
+    expect(nearbyPandals([], [], south).candidates).toEqual([])
+    expect(nearbyPandals(PANDALS, PANDALS.map((pandal) => ({ pandalId: pandal.id, at: now, method: 'manual' })), south).candidates).toEqual([])
+    expect(nearbyPandals(PANDALS, [], { lat: 12.97, lng: 77.59 }).candidates).toEqual([])
+    const tied = [{ ...PANDALS[0], id: 'zeta' }, { ...PANDALS[0], id: 'alpha' }]
+    expect(nearbyPandals(tied, [], tied[0]).candidates.map(({ pandal }) => pandal.id)).toEqual(['alpha', 'zeta'])
+  })
+
+  it('accepts a fresh planning fix through 200 metres but rejects inaccurate and stale fixes', () => {
+    expect(planningFixIssue(south, now)).toBeNull()
+    expect(planningFixIssue({ ...south, accuracyMetres: 200 }, now)).toBeNull()
+    expect(planningFixIssue({ ...south, accuracyMetres: 201 }, now)).toBe('inaccurate')
+    expect(planningFixIssue({ ...south, accuracyMetres: 5000 }, now)).toBe('inaccurate')
+    expect(planningFixIssue({ ...south, at: now - PLANNING_FIX_LIMITS.maxAgeMs - 1 }, now)).toBe('stale')
+    expect(planningFixIssue({ ...south, at: now + PLANNING_FIX_LIMITS.futureToleranceMs + 1 }, now)).toBe('stale')
+    expect(planningFixIssue({ ...south, lat: 12.97, lng: 77.59 }, now)).toBe('outside')
+  })
+
+  it.each([
+    { lat: NaN }, { lng: Infinity }, { accuracyMetres: -1 }, { accuracyMetres: NaN },
+    { accuracyMetres: Infinity }, { at: NaN }, { at: Infinity }, { at: -1 },
+  ])('rejects malformed fixes: %j', (invalid) => {
+    expect(planningFixIssue({ ...south, ...invalid }, now)).toBe('invalid')
+  })
+
+  it.each([
+    { label: '11 m jitter across a decimal boundary', origin: { ...south, lat: 22.52049 }, next: { ...south, lat: 22.52059 }, expected: 'fresh' },
+    { label: '150 m watch movement', origin: south, next: { ...south, lat: south.lat + 0.00135 }, expected: 'location-changed' },
+    { label: '33 m movement within a decimal cell', origin: south, next: { ...south, lat: south.lat + 0.0003 }, expected: 'location-changed' },
+    { label: 'a refreshed North fix', origin: south, next: north, expected: 'location-changed' },
+  ])('compares the snapshot location by distance for $label', ({ origin, next, expected }) => {
+    const stops = PANDALS.slice(0, 4)
+    const route = planRoute({ pandals: stops, origin: { ...origin, name: 'Current location' }, metroStations: METRO_STATIONS,
+      preference: 'balanced', pace: 'steady', availableMinutes: 240, departureTimestamp: now })
+    const settings: PlanSettings = { preference: 'balanced', pace: 'steady', availableMinutes: 240,
+      originKey: deviceOriginKey(origin), deviceOrigin: origin, departureKey: 'now' }
+    const snapshot = { plan: route, orderKey: orderKey(route.orderedIds), settingsKey: settingsKey(settings), deviceOrigin: origin,
+      visitedKey: '', reportsKey: reportsKey(route.orderedIds, []), createdAt: now }
+    expect(planFreshness(snapshot, route.orderedIds, [], settings, [])).toBe('fresh')
+    const moved = { ...settings, originKey: deviceOriginKey(next), deviceOrigin: next }
+    expect(settingsKey(moved)).toBe(snapshot.settingsKey)
+    expect(planFreshness(snapshot, route.orderedIds, [], moved, [])).toBe(expected)
+    expect(planFreshness(snapshot, route.orderedIds, [], { ...settings, originKey: 'manual', deviceOrigin: undefined }, [])).toBe('location-changed')
+    expect(planFreshness(snapshot, route.orderedIds, [], { ...settings, pace: 'relaxed' }, [])).toBe('changed')
   })
 })
 

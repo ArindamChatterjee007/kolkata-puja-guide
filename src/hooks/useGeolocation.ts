@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Coordinate } from '../types'
-import { isInPlanningArea } from '../components/uiState'
+import { planningFixIssue } from '../components/uiState'
 
 export interface DevicePosition extends Coordinate {
   accuracyMetres: number
@@ -15,7 +15,7 @@ function toSample(position: GeolocationPosition): DevicePosition {
     lat: position.coords.latitude,
     lng: position.coords.longitude,
     accuracyMetres: position.coords.accuracy,
-    at: Number.isFinite(position.timestamp) ? position.timestamp : Date.now(),
+    at: position.timestamp,
   }
 }
 
@@ -39,8 +39,11 @@ export function useGeolocation() {
   const [watching, setWatching] = useState(false)
   const watchId = useRef<number | null>(null)
   const wantWatch = useRef(false)
+  const onceGeneration = useRef(0)
+  const watchGeneration = useRef(0)
 
   const clearNativeWatch = useCallback(() => {
+    watchGeneration.current += 1
     if (watchId.current !== null && 'geolocation' in navigator) {
       navigator.geolocation.clearWatch(watchId.current)
     }
@@ -48,22 +51,26 @@ export function useGeolocation() {
   }, [])
 
   const handleSample = useCallback((sample: DevicePosition) => {
-    if (!isInPlanningArea(sample)) {
+    const issue = planningFixIssue(sample, Date.now())
+    if (issue === 'invalid' || issue === 'outside') {
       setPosition(null)
       setStatus('error')
-      setError('outside')
-      return
+      setError(issue === 'outside' ? 'outside' : 'unavailable')
+      return false
     }
     setPosition(sample)
     setStatus('ready')
     setError(null)
+    return true
   }, [])
 
   const startNativeWatch = useCallback(() => {
     if (watchId.current !== null || availability()) return
+    const generation = ++watchGeneration.current
     watchId.current = navigator.geolocation.watchPosition(
-      (next) => handleSample(toSample(next)),
+      (next) => { if (generation === watchGeneration.current) handleSample(toSample(next)) },
       (failure) => {
+        if (generation !== watchGeneration.current) return
         setStatus('error')
         setError(errorKind(failure))
         if (failure.code === failure.PERMISSION_DENIED) {
@@ -77,6 +84,7 @@ export function useGeolocation() {
   }, [clearNativeWatch, handleSample])
 
   const locateOnce = useCallback((): Promise<DevicePosition | null> => {
+    const generation = ++onceGeneration.current
     const unavailable = availability()
     if (unavailable) {
       setStatus('error')
@@ -88,11 +96,12 @@ export function useGeolocation() {
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
         (next) => {
+          if (generation !== onceGeneration.current) { resolve(null); return }
           const sample = toSample(next)
-          handleSample(sample)
-          resolve(isInPlanningArea(sample) ? sample : null)
+          resolve(handleSample(sample) ? sample : null)
         },
         (failure) => {
+          if (generation !== onceGeneration.current) { resolve(null); return }
           setStatus('error')
           setError(errorKind(failure))
           resolve(null)
@@ -121,6 +130,7 @@ export function useGeolocation() {
   }, [clearNativeWatch])
 
   const forget = useCallback(() => {
+    onceGeneration.current += 1
     stopWatch()
     setPosition(null)
     setStatus('idle')
@@ -134,6 +144,7 @@ export function useGeolocation() {
     }
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
+      onceGeneration.current += 1
       document.removeEventListener('visibilitychange', onVisibility)
       clearNativeWatch()
     }
