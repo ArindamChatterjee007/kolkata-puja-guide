@@ -29,7 +29,7 @@ export const pwaOptions = {
     globPatterns: ['**/*.{html,js,css,json,webmanifest,woff,woff2,ttf,otf,png,jpg,jpeg,webp,avif,gif,svg,ico,md}'],
     maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
     navigateFallback: 'index.html',
-    navigateFallbackDenylist: [/\/office\.html(?:\?.*)?$/],
+    navigateFallbackDenylist: [/\/office\.html(?:\?.*)?$/, /\/photos\.html(?:\?.*)?$/],
     cleanupOutdatedCaches: true,
     skipWaiting: false,
     clientsClaim: false,
@@ -51,6 +51,7 @@ export default defineConfig({
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         office: fileURLToPath(new URL('./office.html', import.meta.url)),
+        photos: fileURLToPath(new URL('./photos.html', import.meta.url)),
       },
     },
   },

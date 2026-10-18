@@ -55,6 +55,16 @@ Open the live app online, then **More > Add to Home Screen**. When the browser o
 - Accepting a prompt is not proof of installation. Fullscreen alone is not installed-app mode. The live installation checks simulated platform signals; no physical iOS/Android installation or installed-app launch was performed.
 - Location needs explicit browser permission and a foreground app. QA kept **Remember this start on this device** off and Home/GPS coordinates session-only. The UI offers that separate opt-in for local start retention; it was not exercised by these checks. Private coordinates are excluded from shared links. OS suspension can interrupt timing and guidance; background tracking is not promised.
 
+## Trip Albums
+
+The new [Trip albums entry](https://arindamchatterjee007.github.io/kolkata-puja-guide/photos.html) is being published for live acceptance. Its dedicated private backend has passed 53 live checks; frontend acceptance is still pending in the [photo release record](docs/PHOTOS_RELEASE.md).
+
+Open **More > Trip albums**, create an album with a display name, and share its invite link privately. Invite holders join with a name and receive a separate contributor folder, even when names match. Album members can view each other's folders and download unchanged originals; previews are separate smaller images.
+
+Names are not verified identities. Anyone holding an invite can join. Membership belongs to an anonymous browser session and cannot be recovered by retyping a name after clearing storage. Original EXIF, including possible location data, is retained and available to album members. Originals are stored only in private Supabase Storage, never in Git or public Pages assets.
+
+Limits are 40 MB per file, 500 MB and 50 photos per album, 900 MB project storage, and a finite 4 GB charged download allowance with shared Free-plan quota headroom. Download requests are charged twice their byte size; interrupted downloads still count. Free projects can pause after a week of inactivity. This is not unlimited hosting. See the [backend contract](docs/PHOTO_BACKEND.md) for format, quota, access and deletion details.
+
 ## Local Development
 
 The following are optional contributor commands, not the current release gates and not executed for this metadata update. Use Node.js 24 LTS (minimum 22.12) and npm, from this project directory only:
@@ -77,7 +87,7 @@ Open the URL Vite prints for the planner, or append `office.html` for the task r
 - The local street worker uses a 7,899,330-byte ODbL graph from the OSM snapshot of `2026-10-14T20:21:12Z`. [Street data and reproduction](docs/STREET_DATA.md) document filtering, provenance, connectivity and [licensing](public/data/Kolkata-walking.LICENSE.md). Regional PBF/XML inputs are not published.
 - Outfit and Noto Sans Bengali are bundled from local font packages, not a remote font CDN.
 - The separate office uses typed DOM construction and the existing Lucide React package for icons. It has no application backend or additional framework dependency.
-- Vite builds both HTML entry points with a relative base. `vite-plugin-pwa` generates the manifest and same-origin precache.
+- Vite builds three HTML entry points with a relative base. Trip albums uses a separate React entry and the pinned Supabase JavaScript SDK; backend source is not part of the static artifact. `vite-plugin-pwa` generates the manifest and same-origin precache, never private originals or API responses.
 
 The original PNG app icons are checked in, so normal builds need no browser download. To regenerate them, install Google Chrome locally and run `npm run icons`; the existing Playwright package launches an isolated headless browser and writes only `public/icons/`. See [the office and release notes](docs/OFFICE.md) for provenance and maskable safe-area details.
 

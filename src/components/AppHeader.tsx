@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { CircleCheck, Download, Ellipsis, ExternalLink, Flame, Info, Share2, Smartphone, SquareKanban, Wifi, WifiOff } from 'lucide-react'
+import { CircleCheck, Download, Ellipsis, ExternalLink, Flame, Images, Info, Share2, Smartphone, SquareKanban, Wifi, WifiOff } from 'lucide-react'
 import type { Language } from '../types'
 import { t } from '../i18n'
 import { useInstallPrompt } from '../hooks/useInstallPrompt'
@@ -17,6 +17,7 @@ interface AppHeaderProps {
 }
 
 const WORK_BOARD_URL = `${import.meta.env.BASE_URL}office.html`
+const TRIP_ALBUMS_URL = `${import.meta.env.BASE_URL}photos.html`
 
 function menuItems(menu: HTMLElement | null): HTMLElement[] {
   return menu ? [...menu.querySelectorAll<HTMLElement>('[role^="menuitem"]')] : []
@@ -184,6 +185,10 @@ export function AppHeader({ language, online, onLanguage, onShare, onInfo }: App
                   <span>{aboutLabel}</span>
                 </button>
               )}
+              <a role="menuitem" className="header-menu__item" href={TRIP_ALBUMS_URL} onClick={() => setMenuOpen(false)}>
+                <Images size={18} aria-hidden="true" />
+                <span>{t(language, 'tripAlbums')}</span>
+              </a>
               <a
                 role="menuitem"
                 className="header-menu__item"

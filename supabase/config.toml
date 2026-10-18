@@ -1,0 +1,38 @@
+project_id = "pujapath-photos"
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+major_version = 17
+
+[auth]
+enabled = true
+site_url = "https://arindamchatterjee007.github.io"
+additional_redirect_urls = []
+enable_signup = true
+enable_anonymous_sign_ins = true
+
+[auth.rate_limit]
+anonymous_users = 30
+
+[auth.email]
+enable_confirmations = true
+
+[storage]
+enabled = true
+file_size_limit = "40MB"
+
+[storage.vector]
+enabled = false
+
+[storage.analytics]
+enabled = false
+
+[functions.trip-photos]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/trip-photos/index.ts"

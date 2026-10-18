@@ -17,10 +17,13 @@ blob-report/
 coverage/
 .env
 .env.*
+*.env
 !.env.example
 .private/
 private/
 tmp/
+supabase/.temp/
+supabase/.branches/
 *.pem
 *.key
 
