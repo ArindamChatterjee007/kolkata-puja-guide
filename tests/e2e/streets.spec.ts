@@ -5,7 +5,7 @@ import { REPORT_TTL_MS } from '../../src/domain/crowd'
 import type { StreetRoute, StreetRouteResult } from '../../src/domain/streets'
 import type { Coordinate } from '../../src/types'
 import { formatNumber, t } from '../../src/i18n'
-import { test, expect, seedPlan, savedPlan, geoCalls, emitGps, setVisibility, setOnline, FIXED_TIME, ORIGIN } from './planner.fixture'
+import { test, expect, seedPlan, savedPlan, geoCalls, emitGps, setVisibility, setOnline, FIXED_TIME, ORIGIN, choosePublicHome } from './planner.fixture'
 
 const streetConsoleErrors = new WeakMap<Page, string[]>()
 
@@ -24,6 +24,7 @@ test.afterEach(async ({ page }, testInfo) => {
 })
 
 async function beginWalking(page: Page, originId: string, destinationId: string) {
+  if (originId === 'planned') await choosePublicHome(page, (await savedPlan(page)).startId)
   const destination = PANDALS.find((point) => point.id === destinationId)!
   await page.getByRole('tab', { name: /Your route/ }).click()
   await page.locator('.navigation-next').getByRole('button', { name: `Navigate to ${destination.name}`, exact: true }).click()
@@ -164,6 +165,7 @@ test('dialog cancellation preserves the committed Bagbazar geometry, progress an
 test('map picking cancels without losing the draft, then routes two explicit ephemeral points', async ({ page }) => {
   await seedPlan(page)
   await page.goto('/')
+  await choosePublicHome(page, 'start-blue-shyambazar')
   const before = await savedPlan(page)
   await page.locator('.navigation-next').getByRole('button', { name: 'Navigate to Bagbazar Sarbojanin', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Navigation', exact: true })
@@ -186,7 +188,7 @@ test('map picking cancels without losing the draft, then routes two explicit eph
   await expect(dialog.getByRole('combobox', { name: 'To', exact: true })).toHaveValue('Unknown private meeting place')
   await expect(dialog.getByRole('combobox', { name: 'From', exact: true })).toHaveValue('planned')
   await dialog.getByRole('button', { name: 'Pick start on map', exact: true }).click()
-  await clickMapAtMarker(page, '.pp-pin--start')
+  await clickMapAtMarker(page, '.pp-pin--home')
   await page.getByRole('button', { name: 'Choose this point', exact: true }).click()
   await expect(dialog.getByRole('combobox', { name: 'From', exact: true })).toHaveValue('point')
   await dialog.getByRole('button', { name: 'Pick destination on map', exact: true }).click()
@@ -228,8 +230,9 @@ for (const failure of ['denied', 'inaccurate', 'stale', 'outside'] as const) {
 
 test('guidance follows fresh fixes, freezes poor fixes and shares one visibility-aware watch with check-in', async ({ page }) => {
   await page.clock.install({ time: FIXED_TIME })
-  await seedPlan(page)
+  await seedPlan(page, { availableMinutes: 360 })
   await page.goto('/')
+  await choosePublicHome(page, 'start-blue-shyambazar')
   await openWalking(page, 'landmark:start-blue-shyambazar', 'bagbazar')
   await page.clock.pauseAt(new Date(FIXED_TIME.getTime() + 10_000))
   await page.getByRole('button', { name: 'Start walking', exact: true }).click()
@@ -251,8 +254,10 @@ test('guidance follows fresh fixes, freezes poor fixes and shares one visibility
   await emitGps(page, start)
   await expect(page.locator('.directions__follow-state')).toHaveText('Following location')
   await page.getByRole('tab', { name: /Your route/ }).click()
-  await page.getByRole('button', { name: 'Start journey', exact: true }).click()
-  await page.getByRole('switch').click()
+  await page.getByRole('switch').uncheck()
+  await page.getByTestId('trip-bar').getByRole('button', { name: 'Start journey', exact: true }).click()
+  await expect(page.getByTestId('trip-bar')).toHaveAttribute('data-status', 'running')
+  await page.getByRole('switch').check()
   await expect(page.getByRole('switch')).toBeChecked()
   await expect.poll(() => geoCalls(page)).toEqual({ once: 0, started: 2, active: 1 })
   await page.getByRole('tab', { name: 'Directions', exact: true }).click()
@@ -260,7 +265,7 @@ test('guidance follows fresh fixes, freezes poor fixes and shares one visibility
   await expect.poll(() => geoCalls(page)).toEqual({ once: 0, started: 2, active: 1 })
   await page.getByRole('button', { name: 'Start walking', exact: true }).click()
   await page.getByRole('tab', { name: /Your route/ }).click()
-  await page.getByRole('button', { name: 'Stop journey', exact: true }).click()
+  await page.getByRole('button', { name: 'End trip', exact: true }).click()
   await expect.poll(() => geoCalls(page)).toEqual({ once: 0, started: 2, active: 1 })
   await page.getByRole('tab', { name: 'Directions', exact: true }).click()
   await page.getByRole('button', { name: 'Close directions', exact: true }).click()

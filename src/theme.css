@@ -1,0 +1,261 @@
+/* ---------- Palettes ----------
+   Day: vermilion on ivory. Night: warm charcoal with pearl text, brass and teal accents.
+   Colour tokens use light-dark() so each is declared once; `color-scheme` is the only switch.
+   The OS scheme applies before hydration only while no data-theme attribute exists, so a stored
+   explicit choice wins as soon as the store applies it (no flash for Auto users on either scheme). */
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+  }
+}
+
+:root {
+  --ink: light-dark(#221c1c, #f3ede5);
+  --ink-2: light-dark(#4b4343, #d7cec4);
+  --muted: light-dark(#6f6666, #a99f95);
+  --surface: light-dark(#ffffff, #1a1617);
+  --surface-raised: light-dark(#ffffff, #272122);
+  --ivory: light-dark(#faf6ee, #302829);
+  --track: light-dark(#f2ede5, #100d0e);
+  --rail: light-dark(#ece7df, #3a3132);
+  --line: light-dark(#e7e1d8, #3a3132);
+  --line-strong: light-dark(#d6cec3, #4e4344);
+  --on-accent: #ffffff;
+  --inverse-surface: light-dark(#221c1c, #f3ede5);
+  --on-inverse: light-dark(#ffffff, #1a1617);
+  --on-inverse-line: light-dark(rgba(255, 255, 255, 0.45), rgba(26, 22, 23, 0.45));
+  --on-inverse-hover: light-dark(rgba(255, 255, 255, 0.12), rgba(26, 22, 23, 0.1));
+  --vermilion: light-dark(#bc2f32, #d63c41);
+  --vermilion-strong: light-dark(#a82329, #c4333a);
+  --vermilion-deep: light-dark(#a82329, #ff9a9c);
+  --vermilion-soft: light-dark(#fbeceb, #3d2224);
+  --emerald: light-dark(#1a7c52, #1f8656);
+  --emerald-strong: light-dark(#176d48, #2a9a68);
+  --emerald-deep: light-dark(#176d48, #8ddcb4);
+  --emerald-soft: light-dark(#e6f4ec, #1c3128);
+  --ochre: light-dark(#b97a12, #d4a24a);
+  --ochre-deep: light-dark(#8f5d0a, #f1c76f);
+  --ochre-soft: light-dark(#fbf1dc, #352b17);
+  --ochre-ink: light-dark(#6b4608, #f1c76f);
+  --ochre-line: light-dark(#ecd9ad, #5a4a22);
+  --plum: light-dark(#772d63, #c98bb8);
+  --plum-soft: light-dark(#f6eaf3, #34222e);
+  --sky: light-dark(#2a62c9, #7fb3ff);
+  --sky-soft: light-dark(#eef4fc, #1f2a3a);
+  --sky-line: light-dark(#cfdcf2, #334866);
+  --sky-ink: light-dark(#1d3d7a, #a9c8ff);
+  --street-ink: light-dark(#14664d, #7fd4ad);
+  --street-soft: light-dark(#eef7f2, #1b2e26);
+  --street-turn-ink: light-dark(#144a38, #bfe9d4);
+  --visited-soft: light-dark(#fbfdfb, #1e2622);
+  --visited-line: light-dark(#cfe6d8, #2f4a3c);
+  --warn-soft: light-dark(#fff5e6, #33281a);
+  --warn-ink: light-dark(#7a4a00, #f2c97c);
+  --warn-line: light-dark(#f1dcb3, #5a4722);
+  --hooghly: #cfe6f5;
+  --map-bg: light-dark(#e8f1f8, #1f2326);
+  --schematic-bg: light-dark(#ffffff, #1f2326);
+  --overlay-surface: light-dark(rgba(255, 255, 255, 0.92), rgba(26, 22, 23, 0.9));
+  --overlay-surface-solid: light-dark(#ffffff, #1a1617);
+  --overlay-line: light-dark(rgba(0, 0, 0, 0.12), rgba(255, 255, 255, 0.16));
+  --control-line: light-dark(rgba(0, 0, 0, 0.2), rgba(255, 255, 255, 0.22));
+  --photo-frame: light-dark(#221c1c, #0f0c0d);
+  --knob: light-dark(#ffffff, #f3ede5);
+  --switch-track: light-dark(#d9d2c8, #4e4344);
+  --scrim: light-dark(rgba(34, 28, 28, 0.45), rgba(0, 0, 0, 0.62));
+  --focus: light-dark(#1b1b1b, #5fd3c4);
+  --focus-halo: light-dark(#ffffff, #1a1617);
+  /* Map overlays sit on the same OpenStreetMap tiles in both themes, so pin colours never flip. */
+  --route-street: #14664d;
+  --pin-start: #221c1c;
+  --pin-selected: #a82329;
+  --pin-ring: #ffffff;
+  /* The intro gradient only shows while the portrait loads; the photo defines the mood, not the theme. */
+  --intro-a: #772d63;
+  --intro-b: #a82329;
+  --intro-c: #8f5d0a;
+  --radius: 8px;
+  --motion-section: 200ms;
+  --motion-quiet: 160ms;
+  --shadow: 0 1px 2px rgba(34, 28, 28, 0.08), 0 8px 24px rgba(34, 28, 28, 0.08);
+  --select-arrow: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234b4343' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+  /* Night keeps the real OpenStreetMap cartography (no inversion); only overall brightness is lowered. */
+  --map-tiles-filter: none;
+}
+
+/* Non-colour tokens cannot use light-dark(); declared for both night entry points. */
+:root[data-theme='dark'] {
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.5);
+  --select-arrow: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23d7cec4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+  --map-tiles-filter: brightness(0.84) saturate(0.9);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.5);
+    --select-arrow: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23d7cec4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+    --map-tiles-filter: brightness(0.84) saturate(0.9);
+  }
+}
+
+/* ---------- Theme control ---------- */
+/* ThemeControl renders one variant per width (group >= 760px, cycle button 360-759px, nothing below). */
+.theme-control {
+  display: contents;
+}
+
+.segmented--theme .segmented__item {
+  flex: none;
+  flex-direction: row;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.segmented--theme .segmented__item svg {
+  flex: none;
+}
+
+.theme-control__cycle {
+  color: var(--ink-2);
+}
+
+@media (min-width: 760px) and (max-width: 899px) {
+  .theme-control__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .segmented--theme .segmented__item {
+    padding: 0 8px;
+  }
+}
+
+/* ---------- Night: Leaflet chrome follows the panel palette ---------- */
+.pp-map__canvas .leaflet-tile-pane {
+  filter: var(--map-tiles-filter);
+}
+
+:root[data-theme='dark'] .leaflet-bar a,
+:root[data-theme='dark'] .leaflet-touch .leaflet-bar a {
+  background: var(--surface-raised);
+  color: var(--ink);
+  border-bottom-color: var(--line);
+}
+
+:root[data-theme='dark'] .leaflet-bar a:hover,
+:root[data-theme='dark'] .leaflet-bar a:focus {
+  background: var(--ivory);
+}
+
+:root[data-theme='dark'] .leaflet-bar a.leaflet-disabled {
+  background: var(--surface);
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .leaflet-touch .leaflet-bar,
+:root[data-theme='dark'] .leaflet-touch .leaflet-control-layers {
+  border-color: var(--control-line);
+}
+
+:root[data-theme='dark'] .leaflet-container a {
+  color: var(--sky);
+}
+
+:root[data-theme='dark'] .leaflet-popup-content-wrapper,
+:root[data-theme='dark'] .leaflet-popup-tip {
+  background: var(--surface-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+:root[data-theme='dark'] .leaflet-container a.leaflet-popup-close-button {
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .leaflet-tooltip {
+  background: var(--surface-raised);
+  border-color: var(--line-strong);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+:root[data-theme='dark'] .leaflet-tooltip-top::before {
+  border-top-color: var(--surface-raised);
+}
+
+:root[data-theme='dark'] .leaflet-tooltip-bottom::before {
+  border-bottom-color: var(--surface-raised);
+}
+
+:root[data-theme='dark'] .leaflet-tooltip-left::before {
+  border-left-color: var(--surface-raised);
+}
+
+:root[data-theme='dark'] .leaflet-tooltip-right::before {
+  border-right-color: var(--surface-raised);
+}
+
+:root[data-theme='dark'] .pp-label--water {
+  color: #5a86c9;
+}
+
+/* Night pins keep day colours on the shared tiles; only the selected halo picks up the darker chrome. */
+:root[data-theme='dark'] .pp-pin--selected {
+  box-shadow: 0 0 0 4px rgba(255, 154, 156, 0.35), 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Theme switch: panels and controls cross-fade quietly; the map canvas never transitions (no tile flash). */
+.app,
+.header,
+.panel,
+.btn,
+.icon-btn,
+.segmented,
+.segmented__item,
+.chip,
+.pandal-row,
+.stop,
+.modal__frame {
+  transition-property: background-color, border-color, color;
+  transition-duration: var(--motion-quiet);
+  transition-timing-function: ease-out;
+}
+
+/* The tab body re-enters once per switch, after the old panel has gone (200 ms, no slide). */
+.tab-body {
+  animation: section-enter var(--motion-section) ease-out both;
+}
+
+@keyframes section-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-body {
+    animation: none;
+  }
+}

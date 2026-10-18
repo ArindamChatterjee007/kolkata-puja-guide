@@ -1,6 +1,9 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page, TestInfo } from '@playwright/test'
 import { PANDALS } from '../../src/data/pandals'
+import { ALL_PLACES } from '../../src/data/regions'
+import { PLACE_INSIGHTS } from '../../src/data/placeInsights'
+import { getRegionalPreviewEmbedUrl } from '../../src/data/regionalCuration'
 import { AREA_MAP_CREDIT, PANDAL_MEDIA } from '../../src/data/pandalMedia'
 import type { PandalPreview } from '../../src/data/pandalMedia'
 import { t } from '../../src/i18n'
@@ -15,6 +18,56 @@ const SREEBHUMI = PANDAL_MEDIA.sreebhumi
 
 // 44px minimum with half-pixel tolerance: fractional dialog centring can report 43.99997 for a 44px box.
 const MIN_TARGET = 43.5
+
+for (const language of ['en', 'bn'] as const) {
+  test(`regional video preview requires consent and preserves source fallback in ${language}`, async ({ page }) => {
+    await page.setViewportSize({ width: language === 'bn' ? 320 : 1440, height: 900 })
+    const place = ALL_PLACES.find((entry) => entry.id === 'durgapur-shankarpur')!
+    const preview = PLACE_INSIGHTS[place.id].media.previews!.find((entry) => entry.embed)!
+    const requests: string[] = []
+    await page.route('https://www.youtube-nocookie.com/**', async (route) => {
+      requests.push(route.request().url())
+      await route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body>Intercepted provider frame</body></html>' })
+    })
+    await seedPlan(page, { stopIds: [place.id], language })
+    await page.goto('/')
+    const placeName = language === 'bn' ? place.nameBn : place.name
+    await page.locator('.stop-list').getByRole('button', { name: placeName, exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: placeName, exact: true })
+    const card = dialog.locator(`[data-preview-id="${preview.id}"]`)
+    await expect(card).toContainText(t(language, 'previewFootageUnknown'))
+    await expect(card.locator('time')).toHaveAttribute('datetime', preview.publishedAt!)
+    await expect(page.locator('iframe')).toHaveCount(0)
+    await expect(dialog.locator('img')).toHaveCount(0)
+    expect(requests).toEqual([])
+    await card.getByRole('button', { name: t(language, 'loadPublicVideo'), exact: true }).click()
+    const frame = card.locator('iframe')
+    await frame.scrollIntoViewIfNeeded()
+    await expect(frame).toHaveAttribute('src', getRegionalPreviewEmbedUrl(preview.id, true)!)
+    await expect(frame).toHaveAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation')
+    await expect(frame).toHaveAttribute('referrerpolicy', 'strict-origin-when-cross-origin')
+    await expect(frame).toHaveAttribute('loading', 'lazy')
+    await expect(frame).toHaveAttribute('title', `${t(language, 'publicVideo')}: ${preview.title}`)
+    await expect.poll(() => requests).toEqual([getRegionalPreviewEmbedUrl(preview.id, true)])
+    await expect(card.getByRole('link', { name: preview.title, exact: true })).toHaveAttribute('href', preview.url)
+    expect((await frame.boundingBox())!.height).toBeLessThanOrEqual(160)
+    await noOverflow(page, dialog, 'regional source card')
+    await dialog.getByRole('button', { name: t(language, 'close'), exact: true }).click()
+    await expect(page.locator('iframe')).toHaveCount(0)
+  })
+}
+
+test('regional theme-plan previews are link-only and never presented as completed footage', async ({ page }) => {
+  const place = ALL_PLACES.find((entry) => entry.id === 'asansol-kalyanpur-k-sector')!
+  await seedPlan(page, { stopIds: [place.id] })
+  await page.goto('/')
+  await page.locator('.stop-list').getByRole('button', { name: place.name, exact: true }).click()
+  const previews = page.getByRole('dialog').locator('.regional-previews')
+  await expect(previews).toContainText('Theme plan reported')
+  await expect(previews.getByRole('button', { name: 'Load video', exact: true })).toHaveCount(0)
+  await expect(page.locator('iframe')).toHaveCount(0)
+  await expect(previews.getByRole('link')).toHaveAttribute('href', PLACE_INSIGHTS[place.id].media.previews![0].url)
+})
 
 function name(id: string, language: Language = 'en') {
   const pandal = PANDALS.find((item) => item.id === id)!
@@ -425,7 +478,7 @@ test('thumbnail click opens the same details without touching the route, and the
   await detail.press('Escape')
   await expect(detail).toBeHidden()
   expect(await savedPlan(page)).toEqual(before)
-  expect(await page.evaluate(() => ({ local: Object.keys(localStorage).sort(), session: Object.keys(sessionStorage) }))).toEqual({ local: [STORAGE_KEY], session: [] })
+  expect(await page.evaluate(() => ({ local: Object.keys(localStorage).sort(), session: Object.keys(sessionStorage) }))).toEqual({ local: [STORAGE_KEY, 'kolkata-puja-guide:trip:v1'], session: [] })
   // Reopening (same mount, different pandal, then back) starts at the photo again.
   await (await openDetail(page, 'sreebhumi')).press('Escape')
   const reopened = await openDetail(page, 'bagbazar')

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { CarFront, ExternalLink, Footprints, MapPin, Navigation, TrainFront } from 'lucide-react'
-import type { Coordinate, Landmark, Language, Pandal } from '../types'
+import type { Coordinate, JourneyStop, Landmark, Language } from '../types'
 import { pickName, t } from '../i18n'
 import { Modal } from './Modal'
 import { Segmented } from './Segmented'
@@ -22,20 +22,21 @@ export interface NavigationDraft {
 interface NavigationDialogProps {
   language: Language
   draft: NavigationDraft | null
-  pandals: readonly Pandal[]
+  pandals: readonly JourneyStop[]
   startPoints: readonly Landmark[]
   plannedStart: Landmark | null
-  previousStop: Pandal | undefined
+  previousStop: JourneyStop | undefined
   recommendedMode: DirectionsMode | undefined
   online: boolean
   onChange: (draft: NavigationDraft) => void
   onWalking: (draft: NavigationDraft) => void
+  onDriving?: (draft: NavigationDraft) => void
   onPick: (kind: 'origin' | 'destination', draft: NavigationDraft) => void
   onClose: () => void
 }
 
 export function NavigationDialog({
-  language, draft, pandals, startPoints, plannedStart, previousStop, recommendedMode, online, onChange, onWalking, onPick, onClose,
+  language, draft, pandals, startPoints, plannedStart, previousStop, recommendedMode, online, onChange, onWalking, onDriving, onPick, onClose,
 }: NavigationDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   const open = draft !== null
@@ -85,7 +86,7 @@ export function NavigationDialog({
   const mode = draft?.mode ?? recommendedMode ?? 'walking'
   const destinationPoint = destination?.kind === 'point' ? destination.point : selectedPlace
   const url = draft && (currentLocation || selectedOrigin || pointOrigin)
-    ? navigationUrl(destinationPoint ?? destinationText, currentLocation ? null : pointOrigin ?? selectedOrigin!.point, mode)
+    ? navigationUrl(destinationPoint ?? destinationText, currentLocation || pointOrigin ? null : selectedOrigin!.point, mode)
     : null
   const actionKey = !currentLocation ? 'navigationPreview'
     : mode === 'transit' ? 'navigationTransit'
@@ -169,6 +170,10 @@ export function NavigationDialog({
           {mode === 'walking' && <div className="navigation__walking">
             <button className="btn btn--primary btn--block" type="button" disabled={!destinationPoint || (!currentLocation && !selectedOrigin && !pointOrigin)} onClick={() => onWalking(draft)}><Footprints size={20} aria-hidden="true" />{t(language, 'streetShowRoutes')}</button>
             <p className="hint">{t(language, 'streetLocal')}</p>
+          </div>}
+          {mode === 'driving' && onDriving && <div className="navigation__walking">
+            <button className="btn btn--primary btn--block" type="button" disabled={!destinationPoint || (!currentLocation && !selectedOrigin && !pointOrigin)} onClick={() => onDriving(draft)}><CarFront size={20} aria-hidden="true" />{t(language, 'driveShow')}</button>
+            <p className="hint">{t(language, 'carAccessNote')}</p>
           </div>}
           <div className="setting">
             <strong className="setting__label">{t(language, 'streetExternal')}</strong>

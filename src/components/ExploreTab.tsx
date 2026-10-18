@@ -1,6 +1,6 @@
-import { LocateFixed, MapPin, Minus, Plus, Search, X } from 'lucide-react'
+import { ImageOff, LocateFixed, MapPin, Minus, Plus, Search, X } from 'lucide-react'
 import type { CSSProperties } from 'react'
-import type { Coordinate, CrowdReport, Language, Pandal, Zone } from '../types'
+import type { Coordinate, CrowdReport, JourneyStop, Language, StopKind, Zone } from '../types'
 import { estimateCrowd } from '../domain/crowd'
 import { CATALOGUE_NOTICE } from '../data/pandals'
 import type { CuratedRoute } from '../data/pandals'
@@ -8,16 +8,29 @@ import { PANDAL_MEDIA } from '../data/pandalMedia'
 import type { Landmark } from '../types'
 import { crowdLabel, formatNumber, otherName, pickName, t, zoneLabel } from '../i18n'
 import { PandalPreview } from './PandalPreview'
+import { RegionalPreviews } from './RegionalPreviews'
 import { NearbyPandals } from './NearbyPandals'
 import type { NearbyPandalsProps } from './NearbyPandals'
 import { matchesPandal, sortPandals } from './uiState'
 import type { SortMode } from './uiState'
+import { hasCrowdModel, isEditorPick } from '../data/regions'
+import type { Area } from '../data/regions'
+import { REGIONAL_COVERAGE_NOTICES, UNLOCATED_PUJA_LEADS } from '../data/regionalPlaces'
+import type { UnlocatedPujaLead } from '../data/regionalPlaces'
+import { PLACE_INSIGHTS, RECENT_COVERAGE } from '../data/placeInsights'
+import { Segmented } from './Segmented'
 
 const ZONES: Zone[] = ['North', 'Central', 'South', 'Behala', 'Salt Lake', 'New Town']
 
 interface ExploreTabProps {
   language: Language
-  pandals: readonly Pandal[]
+  pandals: readonly JourneyStop[]
+  area?: Area
+  kind?: StopKind | 'all'
+  mustVisit?: boolean
+  onKind?: (kind: StopKind | 'all') => void
+  onMustVisit?: (checked: boolean) => void
+  onPinLead?: (lead: UnlocatedPujaLead) => void
   stopIds: readonly string[]
   reports: readonly CrowdReport[]
   now: number
@@ -47,15 +60,17 @@ export function ExploreTab(props: ExploreTabProps) {
     onQuery, onZone, onSort, onUseRoute, onToggleStop, onOpenDetails, onShowOnMap,
     nearby, locationNotice, locating, onUseLocation,
   } = props
+  const { area = 'kolkata', kind = 'pandal', mustVisit = false, onKind, onMustVisit, onPinLead } = props
   const filtering = query.trim() !== '' || zone !== 'all'
   const filtered = sortPandals(
-    pandals.filter((pandal) => (zone === 'all' || pandal.zone === zone) && matchesPandal(pandal, query, zoneLabel('bn', pandal.zone))),
+    pandals.filter((pandal) => (zone === 'all' || pandal.zone === zone) && (kind === 'all' || (pandal.kind ?? 'pandal') === kind)
+      && (!mustVisit || isEditorPick(pandal)) && matchesPandal(pandal, query, zoneLabel('bn', pandal.zone))),
     sort, language, origin,
   )
   const full = stopIds.length >= 12
   const stopKey = [...stopIds].sort().join(',')
 
-  const curatedSection = !filtering && (
+  const curatedSection = !filtering && area === 'kolkata' && kind === 'pandal' && !mustVisit && (
     <section className="routes" aria-labelledby="routes-heading">
       <div className="routes__head">
         <figure className="strip">
@@ -117,6 +132,14 @@ export function ExploreTab(props: ExploreTabProps) {
         </div>
       )}
       {locationNotice && <p className="hint hint--warn" role="alert">{locationNotice}</p>}
+      {onKind && <Segmented label={t(language, 'placeKinds')} value={kind} onChange={onKind} compact options={[
+        { value: 'pandal', label: t(language, 'pujaKind') }, { value: 'restaurant', label: t(language, 'foodKind') },
+        { value: 'sight', label: t(language, 'sightKind') }, { value: 'all', label: t(language, 'allKinds') },
+      ]} />}
+      {onMustVisit && <label className="trip-check"><input type="checkbox" checked={mustVisit} onChange={(event) => onMustVisit(event.target.checked)} />{t(language, 'mustVisit')}</label>}
+      {area !== 'kolkata' && <p className="hint hint--warn" data-testid="regional-coverage">
+        {area === 'all' ? `${REGIONAL_COVERAGE_NOTICES.asansol[language]} ${REGIONAL_COVERAGE_NOTICES.durgapur[language]}` : REGIONAL_COVERAGE_NOTICES[area][language]}
+      </p>}
       <div className="search">
         <label className="search__field">
           <Search size={18} aria-hidden="true" />
@@ -147,7 +170,7 @@ export function ExploreTab(props: ExploreTabProps) {
         </label>
       </div>
 
-      <div className="chips" role="group" aria-label={t(language, 'zoneFilter')}>
+      {area === 'kolkata' && <div className="chips" role="group" aria-label={t(language, 'zoneFilter')}>
         <button type="button" className={`chip${zone === 'all' ? ' is-active' : ''}`} aria-pressed={zone === 'all'} onClick={() => onZone('all')}>
           {t(language, 'allZones')}
         </button>
@@ -156,13 +179,13 @@ export function ExploreTab(props: ExploreTabProps) {
             {zoneLabel(language, item)}
           </button>
         ))}
-      </div>
+      </div>}
 
       {!nearby && curatedSection}
 
       <section aria-labelledby="catalogue-heading" className="catalogue">
         <div className="catalogue__head">
-          <h2 id="catalogue-heading" className="section-title">{t(language, 'resultCount', { n: formatNumber(language, filtered.length) })}</h2>
+          <h2 id="catalogue-heading" className="section-title">{t(language, kind === 'pandal' ? 'resultCount' : 'placesCount', { n: formatNumber(language, filtered.length) })}</h2>
           <details className="notice">
             <summary>{t(language, 'catalogueNotice')}</summary>
             <p>{CATALOGUE_NOTICE[language]}</p>
@@ -176,7 +199,8 @@ export function ExploreTab(props: ExploreTabProps) {
               const inRoute = stopIds.includes(pandal.id)
               const name = pickName(language, pandal)
               const report = reports.find((item) => item.pandalId === pandal.id)
-              const crowd = estimateCrowd(pandal, now, report)
+              const crowd = hasCrowdModel(pandal) ? estimateCrowd(pandal, now, report) : null
+              const insight = PLACE_INSIGHTS[pandal.id]
               const details = t(language, 'detailsFor', { name })
               return (
                 <li
@@ -187,7 +211,8 @@ export function ExploreTab(props: ExploreTabProps) {
                 >
                   {/* Pointer shortcut only: the title button is the keyboard and screen-reader route to details. */}
                   <button type="button" className="pandal-row__thumb" tabIndex={-1} onClick={() => onOpenDetails(pandal.id)} aria-label={details} title={details}>
-                    <PandalPreview language={language} media={PANDAL_MEDIA[pandal.id]} variant="thumb" />
+                    {PANDAL_MEDIA[pandal.id] ? <PandalPreview language={language} media={PANDAL_MEDIA[pandal.id]} variant="thumb" />
+                      : <span className="place-no-photo" title={t(language, 'noPlacePhoto')}><ImageOff size={24} aria-hidden="true" /><span className="sr-only">{t(language, 'noPlacePhoto')}</span></span>}
                   </button>
                   <div className="pandal-row__main">
                     <button type="button" className="link-title" onClick={() => onOpenDetails(pandal.id)} title={details}>
@@ -195,11 +220,13 @@ export function ExploreTab(props: ExploreTabProps) {
                     </button>
                     <div className="pandal-row__meta">
                       <span className="alt-name">{otherName(language, pandal)}</span>
-                      <span className="chip-static">{zoneLabel(language, pandal.zone)}</span>
-                      <span className={`crowd crowd--${crowd.level}`}>
+                      <span className="chip-static">{pandal.zone ? zoneLabel(language, pandal.zone) : pandal.city}</span>
+                      {isEditorPick(pandal) && <span className="badge badge--emerald">{t(language, 'featuredLabel')}</span>}
+                      {crowd && <span className={`crowd crowd--${crowd.level}`}>
                         <span className="crowd__basis">{t(language, crowd.basis === 'local-report' ? 'crowdReported' : 'crowdEstimated')}:</span>{' '}
                         {crowdLabel(language, crowd.level)}
-                      </span>
+                      </span>}
+                      {insight?.food && <span>{insight.food.cuisine?.join(', ') ?? t(language, 'hoursUnknown')}</span>}
                       <span>{t(language, 'visitAllowance', { n: formatNumber(language, pandal.visitMinutes) })}</span>
                     </div>
                   </div>
@@ -226,6 +253,23 @@ export function ExploreTab(props: ExploreTabProps) {
         )}
       </section>
       {nearby && curatedSection}
+      {area !== 'kolkata' && <details className="block unlocated-leads">
+        <summary>{t(language, 'unlocatedLeads')}</summary>
+        <p className="hint">{t(language, 'manualPinNote')}</p>
+        <ul>{UNLOCATED_PUJA_LEADS.filter((lead) => area === 'all' || lead.city === area).map((lead) => <li key={lead.id}>
+          <strong>{pickName(language, lead)}</strong><p>{lead.address ?? lead.locationNote}</p>
+          <a href={lead.sourceUrl} target="_blank" rel="noopener noreferrer">{t(language, 'source')}</a>
+          {onPinLead && <button type="button" className="btn btn--quiet" onClick={() => onPinLead(lead)}><MapPin size={16} aria-hidden="true" />{t(language, 'pinPlace')}</button>}
+          <RegionalPreviews language={language} previews={PLACE_INSIGHTS[lead.id]?.media.previews ?? []} />
+        </li>)}</ul>
+      </details>}
+      {area !== 'kolkata' && <details className="block recent-coverage"><summary>{t(language, 'recentCoverage')}</summary>
+        <p className="hint">{t(language, 'noTrending')}</p>
+        <ul>{RECENT_COVERAGE.filter((entry) => area === 'all' || entry.city === area).map((entry) => <li key={entry.id}>
+          <a href={entry.url} target="_blank" rel="noopener noreferrer">{entry.title}</a>
+          <small>{entry.publisher} · {entry.publishedAt}</small><p>{entry.summary}</p>
+        </li>)}</ul>
+      </details>}
     </div>
   )
 }

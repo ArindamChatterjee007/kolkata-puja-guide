@@ -89,9 +89,10 @@ export function DirectionsPanel({
     const startedFollowing = following && !previousFollowing.current
     previousReady.current = ready
     previousFollowing.current = following
+    if (startedFollowing) turnRef.current?.closest<HTMLElement>('.panel__body')?.scrollTo({ top: 0 })
     if (!focusIsLoose()) return
-    if (startedFollowing) turnRef.current?.focus()
-    else if (becameReady) headingRef.current?.focus()
+    if (startedFollowing) turnRef.current?.focus({ preventScroll: true })
+    else if (becameReady) headingRef.current?.focus({ preventScroll: true })
   }, [ready, following])
 
   return (

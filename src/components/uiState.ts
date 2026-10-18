@@ -1,5 +1,6 @@
-import type { Coordinate, CrowdReport, Language, Pace, Pandal, TravelPreference, Visit } from '../types'
+import type { Coordinate, CrowdReport, JourneyStop, Language, Pace, TravelPreference, Visit } from '../types'
 import { haversineMetres, isCoordinate } from '../domain/geo'
+import { isInGuideCoverage } from '../data/regions'
 import type { LegEstimate } from '../domain/travel'
 import type { RoutePlan } from '../domain/route'
 import type { DevicePosition } from '../hooks/useGeolocation'
@@ -11,8 +12,7 @@ export const PLANNING_BOUNDS = Object.freeze({
 })
 
 export function isInPlanningArea(point: Coordinate): boolean {
-  return isCoordinate(point) && point.lat >= PLANNING_BOUNDS.south && point.lat <= PLANNING_BOUNDS.north
-    && point.lng >= PLANNING_BOUNDS.west && point.lng <= PLANNING_BOUNDS.east
+  return isInGuideCoverage(point)
 }
 
 export const PLANNING_FIX_LIMITS = Object.freeze({ maxAccuracyMetres: 200, maxAgeMs: 60_000, futureToleranceMs: 5_000 })
@@ -35,10 +35,10 @@ export function deviceOriginKey(point: Coordinate): string {
 
 export interface NearbyCandidates {
   withinRadius: boolean
-  candidates: { pandal: Pandal; distanceMetres: number }[]
+  candidates: { pandal: JourneyStop; distanceMetres: number }[]
 }
 
-export function nearbyPandals(pandals: readonly Pandal[], visits: readonly Visit[], origin: Coordinate): NearbyCandidates {
+export function nearbyPandals(pandals: readonly JourneyStop[], visits: readonly Visit[], origin: Coordinate): NearbyCandidates {
   if (!isInPlanningArea(origin)) return { withinRadius: false, candidates: [] }
   const visited = new Set(visits.map((visit) => visit.pandalId))
   const closest = sortPandals(pandals.filter((pandal) => !visited.has(pandal.id)), 'nearest', 'en', origin)
@@ -58,7 +58,7 @@ export function foldLatin(text: string): string {
     .replace(/\s+/g, ' ').trim()
 }
 
-export function matchesPandal(pandal: Pandal, query: string, zoneLabelBn: string): boolean {
+export function matchesPandal(pandal: JourneyStop, query: string, zoneLabelBn: string): boolean {
   const trimmed = query.trim()
   if (!trimmed) return true
   const bengali = trimmed.normalize('NFC')
@@ -76,19 +76,19 @@ export type SortMode = 'zone' | 'name' | 'nearest' | 'popular'
 
 const zoneOrder = ['North', 'Central', 'South', 'Behala', 'Salt Lake', 'New Town']
 
-export function sortPandals(
-  pandals: readonly Pandal[], mode: SortMode, language: Language, origin: Coordinate | null,
-): Pandal[] {
-  const name = (pandal: Pandal) => (language === 'bn' ? pandal.nameBn : pandal.name)
-  const byName = (a: Pandal, b: Pandal) => name(a).localeCompare(name(b), language === 'bn' ? 'bn' : 'en')
+export function sortPandals<Stop extends JourneyStop>(
+  pandals: readonly Stop[], mode: SortMode, language: Language, origin: Coordinate | null,
+): Stop[] {
+  const name = (pandal: Stop) => (language === 'bn' ? pandal.nameBn : pandal.name)
+  const byName = (a: Stop, b: Stop) => name(a).localeCompare(name(b), language === 'bn' ? 'bn' : 'en')
   const list = [...pandals]
   if (mode === 'name') return list.sort(byName)
-  if (mode === 'popular') return list.sort((a, b) => b.popularity - a.popularity || byName(a, b))
+  if (mode === 'popular') return list.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0) || byName(a, b))
   if (mode === 'nearest' && origin) {
     return list.sort((first, second) => haversineMetres(origin, first) - haversineMetres(origin, second)
       || first.id.localeCompare(second.id, 'en'))
   }
-  return list.sort((a, b) => zoneOrder.indexOf(a.zone) - zoneOrder.indexOf(b.zone) || byName(a, b))
+  return list.sort((a, b) => zoneOrder.indexOf(a.zone ?? '') - zoneOrder.indexOf(b.zone ?? '') || byName(a, b))
 }
 
 export function moveItem<T>(list: readonly T[], index: number, delta: number): T[] {
@@ -105,8 +105,16 @@ export function nextPendingStopId(stopIds: readonly string[], visits: readonly V
   return stopIds.find((id) => !visited.has(id)) ?? null
 }
 
+export function pendingStopOrdinals(stopIds: readonly string[], visitedIds: ReadonlySet<string>): ReadonlyMap<string, number> {
+  const ordinals = new Map<string, number>()
+  for (const id of stopIds) {
+    if (!visitedIds.has(id) && !ordinals.has(id)) ordinals.set(id, ordinals.size + 1)
+  }
+  return ordinals
+}
+
 // Visited stops keep their relative position ahead of the optimizer's pending order.
-export function applyOptimizedOrder(stopIds: readonly string[], plan: RoutePlan): string[] {
+export function applyOptimizedOrder(stopIds: readonly string[], plan: RoutePlan<JourneyStop>): string[] {
   const pending = new Set(plan.orderedIds)
   const kept = stopIds.filter((id) => !pending.has(id))
   return [...kept, ...plan.orderedIds.filter((id) => stopIds.includes(id))]
@@ -119,10 +127,11 @@ export interface PlanSettings {
   originKey: string
   deviceOrigin?: Coordinate
   departureKey: string
+  tripKey?: string
 }
 
 export interface PlanSnapshot {
-  plan: RoutePlan
+  plan: RoutePlan<JourneyStop>
   orderKey: string
   settingsKey: string
   deviceOrigin?: Coordinate
@@ -136,7 +145,7 @@ export function orderKey(stopIds: readonly string[]): string {
 }
 
 export function settingsKey(settings: PlanSettings): string {
-  return [settings.preference, settings.pace, settings.availableMinutes, settings.deviceOrigin ? 'device' : settings.originKey, settings.departureKey].join('|')
+  return [settings.preference, settings.pace, settings.availableMinutes, settings.deviceOrigin ? 'device' : settings.originKey, settings.departureKey, settings.tripKey ?? ''].join('|')
 }
 
 export function visitedKey(stopIds: readonly string[], visits: readonly Visit[]): string {
@@ -173,6 +182,7 @@ export function explainLeg(
 ): string {
   const walk = alternatives.find((option) => option.mode === 'walk')
   const metro = alternatives.find((option) => option.mode === 'metro')
+  if (leg.transport === 'personal') return t(language, 'carAccessNote')
   if (leg.mode === 'road') return t(language, 'whyRoad')
   if (leg.mode === 'metro') {
     const saved = walk ? walk.walkMetres - leg.walkMetres : 0

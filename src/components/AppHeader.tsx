@@ -1,6 +1,10 @@
-import { Flame, Info, Share2, Wifi, WifiOff } from 'lucide-react'
+import { useEffect, useId, useRef, useState } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { Ellipsis, ExternalLink, Flame, Info, Share2, SquareKanban, Wifi, WifiOff } from 'lucide-react'
 import type { Language } from '../types'
 import { t } from '../i18n'
+import { useMediaQuery } from '../hooks/useMediaQuery'
+import { ThemeControl } from './ThemeControl'
 
 interface AppHeaderProps {
   language: Language
@@ -10,7 +14,79 @@ interface AppHeaderProps {
   onInfo: () => void
 }
 
+const WORK_BOARD_URL = `${import.meta.env.BASE_URL}office.html`
+
+function menuItems(menu: HTMLElement | null): HTMLElement[] {
+  return menu ? [...menu.querySelectorAll<HTMLElement>('[role^="menuitem"]')] : []
+}
+
+// 320-359px headers hold exactly four 44px targets beside the full brand name, so About joins the overflow
+// menu there; phones keep Appearance in the menu because a sixth inline target would truncate the brand.
 export function AppHeader({ language, online, onLanguage, onShare, onInfo }: AppHeaderProps) {
+  const wide = useMediaQuery('(min-width: 760px)')
+  const aboutInline = useMediaQuery('(min-width: 360px)')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [initialFocus, setInitialFocus] = useState<'first' | 'last'>('first')
+  const menuId = useId()
+  const triggerId = useId()
+  const newTabHintId = useId()
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const openMenu = (focus: 'first' | 'last') => {
+    setInitialFocus(focus)
+    setMenuOpen(true)
+  }
+
+  const closeMenu = (restoreFocus: boolean) => {
+    setMenuOpen(false)
+    if (restoreFocus) triggerRef.current?.focus()
+  }
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const items = menuItems(menuRef.current)
+    items[initialFocus === 'first' ? 0 : items.length - 1]?.focus()
+    const closeIfOutside = (event: Event) => {
+      if (!wrapperRef.current?.contains(event.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', closeIfOutside, true)
+    document.addEventListener('focusin', closeIfOutside, true)
+    return () => {
+      document.removeEventListener('pointerdown', closeIfOutside, true)
+      document.removeEventListener('focusin', closeIfOutside, true)
+    }
+  }, [menuOpen, initialFocus])
+
+  const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const items = menuItems(menuRef.current)
+    const index = items.indexOf(document.activeElement as HTMLElement)
+    const focusAt = (next: number) => {
+      event.preventDefault()
+      items[(next + items.length) % items.length]?.focus()
+    }
+    if (event.key === 'ArrowDown') focusAt(index + 1)
+    else if (event.key === 'ArrowUp') focusAt(index - 1)
+    else if (event.key === 'Home') focusAt(0)
+    else if (event.key === 'End') focusAt(items.length - 1)
+    else if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      closeMenu(true)
+    } else if (event.key === 'Tab') setMenuOpen(false)
+  }
+
+  const onTriggerKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      if (!menuOpen) openMenu(event.key === 'ArrowDown' ? 'first' : 'last')
+    }
+  }
+
+  const aboutLabel = t(language, 'about')
+  const aboutIcon = <Info size={20} aria-hidden="true" />
+
   return (
     <header className="header">
       <div className="brand">
@@ -36,6 +112,7 @@ export function AppHeader({ language, online, onLanguage, onShare, onInfo }: App
             বাংলা
           </button>
         </div>
+        {wide && <ThemeControl language={language} variant="group" />}
         <span className={`status-pill${online ? '' : ' status-pill--off'}`} role="status" title={online ? t(language, 'online') : t(language, 'offlineHint')}>
           {online ? <Wifi size={16} aria-hidden="true" /> : <WifiOff size={16} aria-hidden="true" />}
           <span className="status-pill__text">{online ? t(language, 'online') : t(language, 'offline')}</span>
@@ -44,9 +121,68 @@ export function AppHeader({ language, online, onLanguage, onShare, onInfo }: App
           <Share2 size={18} aria-hidden="true" />
           <span className="header__btn-text">{t(language, 'share')}</span>
         </button>
-        <button type="button" className="icon-btn" onClick={onInfo} title={t(language, 'about')} aria-label={t(language, 'about')}>
-          <Info size={20} aria-hidden="true" />
-        </button>
+        {aboutInline && (
+          <button type="button" className="icon-btn" onClick={onInfo} title={aboutLabel} aria-label={aboutLabel}>
+            {aboutIcon}
+          </button>
+        )}
+        <div className="header__menu" ref={wrapperRef}>
+          <button
+            type="button"
+            id={triggerId}
+            ref={triggerRef}
+            className={`icon-btn header__more${menuOpen ? ' is-on' : ''}`}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-controls={menuOpen ? menuId : undefined}
+            aria-label={t(language, 'menuMore')}
+            title={t(language, 'menuMore')}
+            onClick={() => (menuOpen ? closeMenu(false) : openMenu('first'))}
+            onKeyDown={onTriggerKeyDown}
+          >
+            <Ellipsis size={20} aria-hidden="true" />
+          </button>
+          {menuOpen && (
+            <div className="header-menu" role="menu" id={menuId} aria-labelledby={triggerId} ref={menuRef} onKeyDown={onMenuKeyDown}>
+              {!wide && (
+                <>
+                  <ThemeControl language={language} variant="menu" />
+                  <div className="header-menu__separator" role="separator" />
+                </>
+              )}
+              {!aboutInline && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="header-menu__item"
+                  onClick={() => {
+                    // Focus returns to the trigger first so the About dialog restores focus to a live element.
+                    closeMenu(true)
+                    onInfo()
+                  }}
+                >
+                  {aboutIcon}
+                  <span>{aboutLabel}</span>
+                </button>
+              )}
+              <a
+                role="menuitem"
+                className="header-menu__item"
+                href={WORK_BOARD_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-describedby={newTabHintId}
+                title={`${t(language, 'workBoard')} · ${t(language, 'opensNewTab')}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                <SquareKanban size={18} aria-hidden="true" />
+                <span>{t(language, 'workBoard')}</span>
+                <ExternalLink size={14} aria-hidden="true" className="header-menu__hint" />
+              </a>
+              <span id={newTabHintId} hidden>{t(language, 'opensNewTab')}</span>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   )

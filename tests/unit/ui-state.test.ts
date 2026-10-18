@@ -11,6 +11,7 @@ import {
   isInPlanningArea, matchesPandal, moveItem, nextPendingStopId, orderKey, planFreshness, reportTimeLeftMs,
   reportsKey, resolveDeparture, settingsKey, sortPandals, visitedKey, navigationUrl, navigationMode, navigationQuery,
   deviceOriginKey, nearbyPandals, planningFixIssue, NEARBY_RADIUS_METRES, PLANNING_FIX_LIMITS,
+  pendingStopOrdinals,
 } from '../../src/components/uiState'
 import type { PlanSettings } from '../../src/components/uiState'
 import { formatClock, formatMinuteRange, formatNumber, t } from '../../src/i18n'
@@ -71,6 +72,22 @@ describe('plan list helpers', () => {
     const visits = [{ pandalId: 'a', at: now, method: 'manual' as const }]
     expect(nextPendingStopId(['a', 'b', 'c'], visits)).toBe('b')
     expect(nextPendingStopId(['a'], visits)).toBeNull()
+  })
+
+  it('numbers only pending stops and restarts at one after a visit without changing history or order', () => {
+    const stopIds = ['first', 'second', 'third']
+    const visitedIds = new Set<string>()
+    expect([...pendingStopOrdinals(stopIds, visitedIds)]).toEqual([['first', 1], ['second', 2], ['third', 3]])
+    visitedIds.add('first')
+    expect([...pendingStopOrdinals(stopIds, visitedIds)]).toEqual([['second', 1], ['third', 2]])
+    expect(stopIds).toEqual(['first', 'second', 'third'])
+    expect([...visitedIds]).toEqual(['first'])
+  })
+
+  it('does not number completed or duplicate IDs', () => {
+    expect([...pendingStopOrdinals(['first', 'second', 'second'], new Set(['first', 'elsewhere']))]).toEqual([['second', 1]])
+    expect(pendingStopOrdinals(['first'], new Set(['first'])).size).toBe(0)
+    expect(pendingStopOrdinals([], new Set()).size).toBe(0)
   })
 
   it('keeps visited stops ahead of the optimized pending order', () => {

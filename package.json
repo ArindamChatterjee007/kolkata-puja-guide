@@ -26,6 +26,7 @@
     "graphology-shortest-path": "^2.1.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.56.0",
+    "ngraph.path": "1.6.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-leaflet": "^5.0.0"
@@ -39,6 +40,7 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "fast-xml-parser": "^5.11.2",
+    "ngraph.graph": "20.0.0",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",

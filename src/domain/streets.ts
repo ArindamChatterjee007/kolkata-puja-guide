@@ -511,7 +511,9 @@ export interface StreetProgress {
   stepIndex: number
 }
 
-export function streetRouteProgress(route: StreetRoute, point: Coordinate, previousMetres = 0, accuracyMetres = 0): StreetProgress {
+export function streetRouteProgress(route: Pick<StreetRoute, 'metres' | 'geometry' | 'cumulativeMetres'> & {
+  steps: readonly { endGeometryIndex: number }[]
+}, point: Coordinate, previousMetres = 0, accuracyMetres = 0): StreetProgress {
   if (!isCoordinate(point) || !Number.isFinite(previousMetres) || previousMetres < 0 || previousMetres > route.metres
     || !Number.isFinite(accuracyMetres) || accuracyMetres < 0 || !route.geometry.length
     || route.geometry.length !== route.cumulativeMetres.length) throw new RangeError('Invalid street progress input')

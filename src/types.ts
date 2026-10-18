@@ -4,9 +4,14 @@ export interface Coordinate {
 }
 
 export type Zone = 'North' | 'Central' | 'South' | 'Salt Lake' | 'New Town' | 'Behala'
+export type City = 'kolkata' | 'asansol' | 'durgapur'
+export type StopKind = 'pandal' | 'restaurant' | 'sight'
+export type Transport = 'personal' | 'public' | 'walk'
 
 export interface Pandal extends Coordinate {
   id: string
+  city?: City
+  kind?: 'pandal'
   name: string
   nameBn: string
   zone: Zone
@@ -23,6 +28,13 @@ export interface Pandal extends Coordinate {
   verifiedOn: string
   coordinateAccuracy: 'approximate'
   featured?: boolean
+}
+
+export interface JourneyStop extends Omit<Pandal, 'zone' | 'popularity' | 'kind'> {
+  zone?: string
+  kind?: StopKind
+  popularity?: 1 | 2 | 3
+  queueMinutes?: MinuteRange
 }
 
 export interface MetroStation extends Coordinate {

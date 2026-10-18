@@ -111,6 +111,7 @@ export function FestivalIntro({ language, open, onClose }: FestivalIntroProps) {
         </p>
         <h2 id={titleId} className="festival-intro__title" lang={language}>{t(language, 'introTitle')}</h2>
         <p className="festival-intro__title-other" lang={otherLanguage}>{t(language, 'introTitleOther')}</p>
+        <p className="festival-intro__tagline" lang={language}>{t(language, 'introTagline')}</p>
         {photo !== 'failed' && (
           <p className="festival-intro__credit" lang={language}>
             {t(language, 'introCredit')}: {bengali ? FESTIVAL_PORTRAIT.captionBn : FESTIVAL_PORTRAIT.caption}

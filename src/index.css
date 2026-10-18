@@ -1,33 +1,8 @@
+@import './theme.css';
+
 :root {
-  --ink: #221c1c;
-  --ink-2: #4b4343;
-  --muted: #6f6666;
-  --surface: #ffffff;
-  --ivory: #faf6ee;
-  --line: #e7e1d8;
-  --line-strong: #d6cec3;
-  --vermilion: #bc2f32;
-  --vermilion-deep: #a82329;
-  --vermilion-soft: #fbeceb;
-  --emerald: #1a7c52;
-  --emerald-deep: #176d48;
-  --emerald-soft: #e6f4ec;
-  --ochre: #b97a12;
-  --ochre-deep: #8f5d0a;
-  --ochre-soft: #fbf1dc;
-  --plum: #772d63;
-  --plum-soft: #f6eaf3;
-  --sky: #2a62c9;
-  --hooghly: #cfe6f5;
-  --map-bg: #e8f1f8;
-  --warn-soft: #fff5e6;
-  --warn-ink: #7a4a00;
-  --focus: #1b1b1b;
-  --radius: 8px;
-  --shadow: 0 1px 2px rgba(34, 28, 28, 0.08), 0 8px 24px rgba(34, 28, 28, 0.08);
   --font: 'Outfit', 'Noto Sans Bengali', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-bn: 'Noto Sans Bengali', 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  color-scheme: light;
   font-family: var(--font);
   font-size: 15px;
   line-height: 1.45;
@@ -107,7 +82,7 @@ a {
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px #ffffff;
+  box-shadow: 0 0 0 4px var(--focus-halo);
 }
 
 .sr-only {
@@ -129,8 +104,8 @@ a {
   z-index: 3000;
   padding: 10px 14px;
   border-radius: var(--radius);
-  background: var(--ink);
-  color: #ffffff;
+  background: var(--inverse-surface);
+  color: var(--on-inverse);
   text-decoration: none;
 }
 

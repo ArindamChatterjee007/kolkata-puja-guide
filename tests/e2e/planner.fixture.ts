@@ -1,8 +1,9 @@
 import { expect, test as base } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import type { SavedPlan } from '../../src/domain/storage'
+import { t } from '../../src/i18n'
 
-export const ORIGIN = 'http://127.0.0.1:5179'
+export const ORIGIN = `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? 5181}`
 export const STORAGE_KEY = 'kolkata-puja-guide:plan:v1'
 export const FIXED_TIME = new Date('2026-10-15T05:00:00.000Z')
 
@@ -99,7 +100,9 @@ export const test = base.extend<{
       const skip = page.locator('dialog.festival-intro[open] .festival-intro__skip')
       await page.addLocatorHandler(skip, async () => {
         introSkips += 1
-        await skip.click()
+        await page.locator('dialog.festival-intro .festival-intro__skip').evaluate((button: HTMLButtonElement) => {
+          if (button.closest('dialog')?.open) button.click()
+        })
         await page.mouse.move(0, 0)
       })
     }
@@ -179,6 +182,29 @@ export const test = base.extend<{
 })
 
 export { expect }
+
+export async function choosePublicHome(page: Page, id: string) {
+  const language = await page.locator('html').getAttribute('lang') === 'bn' ? 'bn' : 'en'
+  const explore = page.getByRole('tab', { name: t(language, 'tabExplore'), exact: true })
+  const restoreExplore = await explore.getAttribute('aria-selected') === 'true'
+  await page.getByRole('tab', { name: new RegExp(t(language, 'tabRoute')) }).click()
+  const other = page.getByTestId('trip-home-other')
+  if (await other.getAttribute('open') === null) await other.locator('summary').click()
+  await other.getByRole('combobox', { name: t(language, 'startLandmark'), exact: true }).selectOption(id)
+  await expect(page.getByTestId('trip-bar')).toHaveAttribute('data-home', 'landmark')
+  if (restoreExplore) await explore.click()
+}
+
+export async function requestNearbyLocation(page: Page) {
+  const language = await page.locator('html').getAttribute('lang') === 'bn' ? 'bn' : 'en'
+  const routeTab = page.getByRole('tab', { name: new RegExp(t(language, 'tabRoute')) })
+  const restoreRoute = await routeTab.getAttribute('aria-selected') === 'true'
+  await page.getByRole('tab', { name: t(language, 'tabExplore'), exact: true }).click()
+  const locate = page.getByRole('button', { name: t(language, 'useMyLocation'), exact: true })
+  if (await locate.count()) await locate.click()
+  else await page.locator('.nearby').getByRole('button', { name: t(language, 'refreshNearby'), exact: true }).click()
+  if (restoreRoute) await routeTab.click()
+}
 
 export async function seedPlan(page: Page, overrides: Partial<SavedPlan> = {}) {
   const plan: SavedPlan = {

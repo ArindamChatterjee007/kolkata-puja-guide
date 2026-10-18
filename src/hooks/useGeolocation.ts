@@ -5,10 +5,17 @@ import { planningFixIssue } from '../components/uiState'
 export interface DevicePosition extends Coordinate {
   accuracyMetres: number
   at: number
+  // Optional device motion hints (degrees clockwise from north, metres per second); null when absent or invalid.
+  heading?: number | null
+  speed?: number | null
 }
 
 export type LocationStatus = 'idle' | 'locating' | 'ready' | 'error'
 export type LocationErrorKind = 'denied' | 'unavailable' | 'timeout' | 'unsupported' | 'insecure' | 'outside'
+
+function motionValue(value: number | null | undefined, max: number): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= max ? value : null
+}
 
 function toSample(position: GeolocationPosition): DevicePosition {
   return {
@@ -16,6 +23,8 @@ function toSample(position: GeolocationPosition): DevicePosition {
     lng: position.coords.longitude,
     accuracyMetres: position.coords.accuracy,
     at: position.timestamp,
+    heading: motionValue(position.coords.heading, 360),
+    speed: motionValue(position.coords.speed, 200),
   }
 }
 

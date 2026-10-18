@@ -1,6 +1,6 @@
 import { UndirectedGraph } from 'graphology'
 import { bidirectional } from 'graphology-shortest-path/dijkstra'
-import type { Coordinate, MetroStation, MinuteRange, Pace, TravelPreference } from '../types'
+import type { Coordinate, MetroStation, MinuteRange, Pace, Transport, TravelPreference } from '../types'
 import { getIstHour } from './crowd'
 import { haversineMetres, isCoordinate } from './geo'
 
@@ -12,6 +12,8 @@ export interface LegRequest {
   preference: TravelPreference
   departureTimestamp: number
   pace: Pace
+  transport?: Transport
+  roadContext?: 'urban' | 'rural'
 }
 
 export interface LegInput extends LegRequest {
@@ -33,7 +35,11 @@ export interface LegEstimate {
   walkMetres: number
   walkKm: number
   geometry: Coordinate[]
-  geometryKind: 'straight-connectors'
+  geometryKind: 'straight-connectors' | 'street-path' | 'car-network'
+  transport?: Transport
+  provenance?: 'geographic-model' | 'static-metro-model' | 'provided-matrix' | 'street-network' | 'osm-car-network'
+  offStreetAccess?: 'unknown'
+  parking?: 'unknown'
   scoreMinutes: number
   stationNames?: string[]
   stationIds?: string[]
@@ -46,6 +52,8 @@ export interface LegOptions {
   alternatives: LegEstimate[]
   recommended: LegEstimate
 }
+
+export type LegEstimator = (input: LegRequest) => LegOptions
 
 type MetroEdge = {
   weight: number
@@ -96,6 +104,7 @@ function makeLeg(
     walkKm,
     geometry: geometry.map(({ lat, lng }) => ({ lat, lng })),
     geometryKind: 'straight-connectors',
+    provenance: mode === 'metro' ? 'static-metro-model' : 'geographic-model',
     scoreMinutes: midpoint(durationMinutes) + walkingPenalty + modePenalty,
     uncertainty: `${uncertainty} ${geometryNotice}`,
   }
@@ -143,14 +152,16 @@ function metroGraph(stations: readonly MetroStation[], pace: Pace) {
 
 export function createLegEstimator(
   metroStations: readonly MetroStation[],
-): (input: LegRequest) => LegOptions {
+): LegEstimator {
   const networks = {
     steady: metroGraph(metroStations, 'steady'),
     relaxed: metroGraph(metroStations, 'relaxed'),
   }
   return (input) => {
     if (!['steady', 'relaxed'].includes(input.pace)
-      || !['balanced', 'walk', 'less-walking'].includes(input.preference)) {
+      || !['balanced', 'walk', 'less-walking'].includes(input.preference)
+      || (input.transport !== undefined && !['personal', 'public', 'walk'].includes(input.transport))
+      || (input.roadContext !== undefined && !['urban', 'rural'].includes(input.roadContext))) {
       throw new RangeError('Invalid travel settings')
     }
     const hour = getIstHour(input.departureTimestamp)
@@ -159,6 +170,22 @@ export function createLegEstimator(
     const walk = makeLeg('walk', walkingMinutes(walkDistance, input.pace), walkDistance,
       walkDistance, [input.from, input.to], input.preference,
       'Walking assumes a 1.3 detour factor and 2.5-3.5 km/h. Closures and accessibility are unknown.')
+    if (input.transport === 'walk') {
+      walk.transport = 'walk'
+      return { alternatives: [walk], recommended: walk }
+    }
+    if (input.transport === 'personal') {
+      const rural = input.roadContext === 'rural'
+      const peakFactor = hour >= 17 && hour < 22 ? 0.55 : hour >= 8 && hour < 11 ? 0.75 : 1
+      const distanceMetres = direct * 1.4
+      const car = makeLeg('road', {
+        min: distanceMetres / ((rural ? 80_000 : 45_000) * peakFactor) * 60,
+        max: distanceMetres / ((rural ? 60_000 : 30_000) * peakFactor) * 60,
+      }, distanceMetres, 0, [input.from, input.to], input.preference,
+      `Personal car driving estimate: 1.4 geographic detour, ${rural ? '60-80' : '30-45'} km/h unimpeded assumption with static IST peak reductions. No taxi pickup charge or wait. Actual traffic, road access, parking and closures are unknown; no live feed.`)
+      car.transport = 'personal'
+      return { alternatives: [car], recommended: car }
+    }
     const peak = hour >= 17 || hour < 2
     const midday = hour >= 12 && hour < 17
     const roadFast = peak ? 10_000 : midday ? 12_000 : 15_000
@@ -229,8 +256,37 @@ export function createLegEstimator(
     if (metroOptions[0]) alternatives.push(metroOptions[0])
     const recommended = [...alternatives].sort((first, second) => first.scoreMinutes - second.scoreMinutes
       || ['walk', 'metro', 'road'].indexOf(first.mode) - ['walk', 'metro', 'road'].indexOf(second.mode))[0]
+    alternatives.forEach((leg) => { leg.transport = 'public' })
     return { alternatives, recommended }
   }
+}
+
+export function validateLegOptions(options: LegOptions, request: LegRequest): LegOptions {
+  if (!options || !Array.isArray(options.alternatives) || !options.alternatives.length
+    || options.alternatives.length > 32) throw new RangeError('Invalid leg alternatives')
+  for (const leg of [options.recommended, ...options.alternatives]) {
+    if (!leg || !['walk', 'road', 'metro'].includes(leg.mode)
+      || !leg.durationMinutes || !Number.isFinite(leg.durationMinutes.min)
+      || !Number.isFinite(leg.durationMinutes.max) || leg.durationMinutes.min < 0
+      || leg.durationMinutes.max < leg.durationMinutes.min
+      || !Number.isFinite(leg.distanceMetres) || leg.distanceMetres < 0
+      || !Number.isFinite(leg.walkMetres) || leg.walkMetres < 0 || leg.walkMetres > leg.distanceMetres + 1
+      || !Number.isFinite(leg.walkKm) || Math.abs(leg.walkKm - leg.walkMetres / 1_000) > 0.002
+      || !Number.isFinite(leg.scoreMinutes) || leg.scoreMinutes < 0
+      || !['straight-connectors', 'street-path', 'car-network'].includes(leg.geometryKind)
+      || !Array.isArray(leg.geometry) || leg.geometry.length < 2 || !leg.geometry.every(isCoordinate)
+      || haversineMetres(request.from, leg.geometry[0]) > (leg.geometryKind === 'car-network' ? 120.1 : 5)
+      || haversineMetres(request.to, leg.geometry[leg.geometry.length - 1]) > (leg.geometryKind === 'car-network' ? 120.1 : 5)
+      || (leg.geometryKind === 'car-network' && (leg.provenance !== 'osm-car-network'
+        || leg.offStreetAccess !== 'unknown' || leg.parking !== 'unknown' || leg.transport !== 'personal'))
+      || typeof leg.uncertainty !== 'string' || !leg.uncertainty.trim()
+      || (request.transport === 'personal' && (leg.mode !== 'road' || leg.walkMetres !== 0))
+      || (request.transport === 'walk' && leg.mode !== 'walk')
+      || (leg.transport !== undefined && leg.transport !== (request.transport ?? 'public'))) {
+      throw new RangeError('Invalid or incompatible leg estimate')
+    }
+  }
+  return options
 }
 
 export function getLegAlternatives(input: LegInput): LegOptions {

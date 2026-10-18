@@ -1,19 +1,26 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { divIcon, latLngBounds } from 'leaflet'
-import type { DivIcon, Map as LeafletMap, TileLayer as LeafletTileLayer } from 'leaflet'
+import { divIcon, latLng, latLngBounds } from 'leaflet'
+import type { DivIcon, Map as LeafletMap, Marker as LeafletMarker, TileLayer as LeafletTileLayer } from 'leaflet'
 import {
   Circle, CircleMarker, MapContainer, Marker, Polygon, Polyline, Popup, TileLayer, Tooltip, useMap, useMapEvents,
 } from 'react-leaflet'
 import { Layers, LocateFixed, MapPinned, Navigation, RotateCcw } from 'lucide-react'
-import type { Coordinate, Language, MetroStation, NamedCoordinate, Pandal } from '../types'
+import type { Coordinate, JourneyStop, Language, MetroStation, NamedCoordinate } from '../types'
+import type { DrivingRouteResult } from '../domain/driving'
+import { GUIDE_BOUNDS, isInGuideCoverage } from '../data/regions'
 import type { TravelMode } from '../domain/travel'
 import type { StreetHotspot, StreetRoute } from '../domain/streets'
 import type { DevicePosition } from '../hooks/useGeolocation'
+import { useMediaQuery } from '../hooks/useMediaQuery'
+import { useTheme } from '../hooks/useTheme'
+import type { ResolvedTheme } from '../hooks/useTheme'
 import { PANDAL_MEDIA } from '../data/pandalMedia'
 import { formatNumber, otherName, pickName, t, zoneLabel } from '../i18n'
 import { PandalPreview } from './PandalPreview'
 import { HOOGHLY_LABEL, HOOGHLY_POLYGON, PLANNING_RECTANGLE } from './schematic'
 import { isStreetPoint } from './streetNavigation'
+import { vehicleAnimationMs } from './vehicle'
+import { pendingStopOrdinals } from './uiState'
 
 export type MapFocusRequest =
   | { nonce: number, kind: 'point', point: Coordinate, zoom?: number }
@@ -24,15 +31,28 @@ export interface RouteSegment {
   points: Coordinate[]
 }
 
+export interface VehicleState {
+  position: DevicePosition
+  heading: number | null
+  live: boolean
+}
+
 interface MapViewProps {
   language: Language
-  pandals: readonly Pandal[]
+  pandals: readonly JourneyStop[]
+  home?: NamedCoordinate | null
+  homeLabel?: string
+  carDirections?: { result: Extract<DrivingRouteResult, { status: 'ok' }>; selectedStep: number | null } | null
+  pickCoverage?: 'walking' | 'guide'
   stopIds: readonly string[]
   visitedIds: ReadonlySet<string>
   selectedId: string | null
   nextStopId: string | null
   origin: NamedCoordinate | null
   devicePosition: DevicePosition | null
+  // Shown instead of the live dot when the last accepted fix is stale or a refresh failed.
+  lastKnownPosition?: DevicePosition | null
+  vehicle?: VehicleState | null
   segments: readonly RouteSegment[]
   directions: {
     route: StreetRoute
@@ -67,9 +87,26 @@ type PinState = 'stop' | 'visited' | 'next' | 'selected'
 const KOLKATA_CENTER: [number, number] = [22.552, 88.365]
 const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+
+export interface TileSource {
+  id: string
+  url: string
+  attribution: string
+  maxZoom: number
+}
+
+const OSM_TILES: TileSource = { id: 'osm-standard', url: OSM_URL, attribution: OSM_ATTRIBUTION, maxZoom: 19 }
+
+// Night reuses the same OpenStreetMap tiles (dimmed in CSS): CARTO raster basemaps require an API key and
+// exclude turn-by-turn navigation under their 29 Sep 2026 terms, and no keyless dark provider was verified.
+const TILE_SOURCES: Record<ResolvedTheme, TileSource> = { light: OSM_TILES, dark: OSM_TILES }
 const TILE_LOAD_TIMEOUT_MS = 12_000
 const FLAG_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4"/><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V4s-1 1-4 1-5-2-8-2-4 1-4 1"/></svg>'
 const CHECK_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'
+// Lucide (ISC) `house`, `car-front` and `navigation` outlines, inlined like the flag above because Leaflet div icons take HTML strings.
+const HOUSE_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
+const CAR_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8"/><path d="M7 14h.01"/><path d="M17 14h.01"/><rect width="18" height="8" x="3" y="10" rx="2"/><path d="M5 18v2"/><path d="M19 18v2"/></svg>'
+const ARROW_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>'
 
 const iconCache = new Map<string, DivIcon>()
 
@@ -96,6 +133,64 @@ const startIcon = divIcon({
   iconAnchor: [15, 15],
   popupAnchor: [0, -14],
 })
+
+const homeIcon = divIcon({
+  className: 'pp-pin-anchor', html: `<span class="pp-pin pp-pin--home">${HOUSE_SVG}</span>`,
+  iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -16],
+})
+
+const vehicleIcons = new Map<string, DivIcon>()
+
+// The Lucide navigation arrow points north-east at 0deg, so the rotation offset is pre-applied in CSS (-45deg).
+function vehicleIcon(oriented: boolean, live: boolean, label: string): DivIcon {
+  const key = `${oriented ? 'arrow' : 'car'}:${live ? 'live' : 'stale'}:${label}`
+  const cached = vehicleIcons.get(key)
+  if (cached) return cached
+  const safeLabel = label.replace(/[<>&"]/g, '')
+  const icon = divIcon({
+    className: 'pp-vehicle-anchor',
+    html: `<span class="pp-vehicle pp-vehicle--${oriented ? 'arrow' : 'car'}${live ? '' : ' pp-vehicle--stale'}" role="img" aria-label="${safeLabel}" data-live="${live}">${oriented ? ARROW_SVG : CAR_SVG}</span>`,
+    iconSize: [36, 36], iconAnchor: [18, 18],
+  })
+  vehicleIcons.set(key, icon)
+  return icon
+}
+
+// Moves with Leaflet setLatLng on animation frames (never CSS layout), at least 120 ms per hop unless reduced motion is on.
+function VehicleMarker({ vehicle, label }: { vehicle: VehicleState; label: string }) {
+  const markerRef = useRef<LeafletMarker | null>(null)
+  const frame = useRef(0)
+  const [initial] = useState<[number, number]>(() => [vehicle.position.lat, vehicle.position.lng])
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const { lat, lng } = vehicle.position
+  useEffect(() => {
+    const marker = markerRef.current
+    if (!marker) return
+    cancelAnimationFrame(frame.current)
+    const from = marker.getLatLng()
+    const to = latLng(lat, lng)
+    const duration = vehicleAnimationMs(from.distanceTo(to), reducedMotion)
+    if (duration === 0) { marker.setLatLng(to); return }
+    const started = performance.now()
+    const step = (now: number) => {
+      const k = Math.min(1, (now - started) / duration)
+      const eased = 1 - (1 - k) * (1 - k)
+      marker.setLatLng([from.lat + (to.lat - from.lat) * eased, from.lng + (to.lng - from.lng) * eased])
+      if (k < 1) frame.current = requestAnimationFrame(step)
+    }
+    frame.current = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(frame.current)
+  }, [lat, lng, reducedMotion])
+  useEffect(() => {
+    const element = markerRef.current?.getElement()
+    if (!element) return
+    element.style.setProperty('--vehicle-heading', `${vehicle.heading ?? 0}deg`)
+    element.dataset.heading = vehicle.heading === null ? '' : String(Math.round(vehicle.heading))
+    element.dataset.live = String(vehicle.live)
+  }, [vehicle.heading, vehicle.live, label])
+  return <Marker ref={markerRef} position={initial} icon={vehicleIcon(vehicle.heading !== null, vehicle.live, label)}
+    interactive={false} keyboard={false} zIndexOffset={650} title={label} />
+}
 
 function MapResizer() {
   const map = useMap()
@@ -188,6 +283,7 @@ function MapFocus({ request }: { request: MapFocusRequest | null }) {
 
 function StreetTiles({ onStateChange }: { onStateChange: (state: StreetsState) => void }) {
   const layerRef = useRef<LeafletTileLayer | null>(null)
+  const source = TILE_SOURCES[useTheme().resolved]
   useEffect(() => {
     const layer = layerRef.current
     if (!layer) return
@@ -233,8 +329,8 @@ function StreetTiles({ onStateChange }: { onStateChange: (state: StreetsState) =
       clearTimer()
       layer.off(handlers)
     }
-  }, [onStateChange])
-  return <TileLayer ref={layerRef} url={OSM_URL} attribution={OSM_ATTRIBUTION} maxZoom={19} />
+  }, [onStateChange, source.id])
+  return <TileLayer key={source.id} ref={layerRef} url={source.url} attribution={source.attribution} maxZoom={source.maxZoom} />
 }
 
 function SchematicLayer({ language, metroStations }: { language: Language, metroStations: readonly MetroStation[] }) {
@@ -280,6 +376,8 @@ export function MapView(props: MapViewProps) {
     metroStations, focus, online, locating, onSelect, onOpenDetails, onToggleStop, onLocate, onFitRoute, onNavigate,
     directions, picking, pickedPoint, onPickPoint, onCancelPick, onConfirmPick,
   } = props
+  const { home, homeLabel, carDirections, pickCoverage = 'walking', lastKnownPosition = null, vehicle = null } = props
+  const validPickedPoint = pickedPoint && (pickCoverage === 'guide' ? isInGuideCoverage(pickedPoint) : isStreetPoint(pickedPoint))
   const [streets, setStreets] = useState<StreetsState>(() => (online ? 'loading' : 'failed'))
   const [epoch, setEpoch] = useState(0)
   const [legendOpen, setLegendOpen] = useState(false)
@@ -305,20 +403,21 @@ export function MapView(props: MapViewProps) {
     setStreets('loading')
   }
 
-  const stopIndex = new Map(stopIds.map((id, index) => [id, index]))
+  const selectedIds = new Set(stopIds)
+  const ordinals = pendingStopOrdinals(stopIds, visitedIds)
   const metroSegments = segments.filter((segment) => segment.mode === 'metro')
   const otherSegments = segments.filter((segment) => segment.mode !== 'metro')
   const schematic = streets === 'failed' || streets === 'slow'
 
   return (
-    <div className={`pp-map${schematic ? ' is-schematic' : ''}${streets === 'slow' ? ' is-slow' : ''}${picking ? ' is-picking' : ''}`} data-streets={streets} data-route-points={directions?.route.geometry.length ?? 0} role="region" aria-label={t(language, 'mapRegion')}>
+    <div className={`pp-map${schematic ? ' is-schematic' : ''}${streets === 'slow' ? ' is-slow' : ''}${picking ? ' is-picking' : ''}`} data-streets={streets} data-route-points={carDirections?.result.route.geometry.length ?? directions?.route.geometry.length ?? 0} data-car-route={Boolean(carDirections)} role="region" aria-label={t(language, 'mapRegion')}>
       <p className="sr-only">{t(language, 'mapListHint')}</p>
       <MapContainer
         center={KOLKATA_CENTER}
         zoom={12}
-        minZoom={11}
+        minZoom={7}
         maxZoom={18}
-        maxBounds={[[22.36, 88.14], [22.74, 88.62]]}
+        maxBounds={[[GUIDE_BOUNDS.south - 0.04, GUIDE_BOUNDS.west - 0.04], [GUIDE_BOUNDS.north + 0.04, GUIDE_BOUNDS.east + 0.04]]}
         maxBoundsViscosity={0.9}
         className="pp-map__canvas"
       >
@@ -362,21 +461,29 @@ export function MapView(props: MapViewProps) {
             </CircleMarker>
           </Fragment>)}
         </>}
-        {picking && <Polygon positions={[[22.44, 88.28], [22.64, 88.28], [22.64, 88.49], [22.44, 88.49]]} pathOptions={{ color: '#14664d', weight: 2, dashArray: '6 6', fillOpacity: 0.04 }} interactive={false} />}
-        {picking && pickedPoint && <CircleMarker center={[pickedPoint.lat, pickedPoint.lng]} radius={10} pathOptions={{ className: 'street-picked-point', color: isStreetPoint(pickedPoint) ? '#14664d' : '#bc2f32', weight: 3, fillColor: '#ffffff', fillOpacity: 1 }} interactive={false} />}
+        {carDirections && <>
+          <Polyline positions={carDirections.result.route.geometry.map((point) => [point.lat, point.lng])} pathOptions={{ className: 'car-route', color: '#14664d', weight: 6, lineCap: 'round' }} interactive={false} />
+          {carDirections.selectedStep !== null && carDirections.result.route.steps[carDirections.selectedStep] && <CircleMarker
+            center={[carDirections.result.route.steps[carDirections.selectedStep].at.lat, carDirections.result.route.steps[carDirections.selectedStep].at.lng]}
+            radius={9} pathOptions={{ color: '#bc2f32', fillColor: '#ffffff', fillOpacity: 1, weight: 3 }} interactive={false} />}
+          {[carDirections.result.snaps.origin, carDirections.result.snaps.destination].map((snap, index) => <CircleMarker key={index}
+            center={[snap.coordinate.lat, snap.coordinate.lng]} radius={5} pathOptions={{ color: '#ffffff', fillColor: '#14664d', fillOpacity: 1, weight: 2 }}>
+            <Tooltip>{t(language, 'carSnapArrival')}</Tooltip></CircleMarker>)}
+        </>}
+        {picking && <Polygon positions={pickCoverage === 'guide' ? [[GUIDE_BOUNDS.south, GUIDE_BOUNDS.west], [GUIDE_BOUNDS.north, GUIDE_BOUNDS.west], [GUIDE_BOUNDS.north, GUIDE_BOUNDS.east], [GUIDE_BOUNDS.south, GUIDE_BOUNDS.east]] : [[22.44, 88.28], [22.64, 88.28], [22.64, 88.49], [22.44, 88.49]]} pathOptions={{ color: '#14664d', weight: 2, dashArray: '6 6', fillOpacity: 0.04 }} interactive={false} />}
+        {picking && pickedPoint && <CircleMarker center={[pickedPoint.lat, pickedPoint.lng]} radius={10} pathOptions={{ className: 'street-picked-point', color: validPickedPoint ? '#14664d' : '#bc2f32', weight: 3, fillColor: '#ffffff', fillOpacity: 1 }} interactive={false} />}
         {pandals.map((pandal) => {
-          const index = stopIndex.get(pandal.id)
           const name = pickName(language, pandal)
           const alternate = otherName(language, pandal)
-          const inRoute = index !== undefined
+          const inRoute = selectedIds.has(pandal.id)
           const popup = (
             <Popup className="pp-popup" closeButton autoPanPaddingTopLeft={[5, 10]} autoPanPaddingBottomRight={[64, 28]}>
               <div className="pp-popup__body">
-                <PandalPreview language={language} media={PANDAL_MEDIA[pandal.id]} variant="popup" />
+                {PANDAL_MEDIA[pandal.id] && <PandalPreview language={language} media={PANDAL_MEDIA[pandal.id]} variant="popup" />}
                 <div className="pp-popup__text">
                   <strong>{name}</strong>
                   {alternate && <span className="pp-popup__alt">{alternate}</span>}
-                  <span className="pp-popup__zone">{zoneLabel(language, pandal.zone)}</span>
+                  <span className="pp-popup__zone">{zoneLabel(language, pandal.zone) || pandal.city}</span>
                 </div>
                 <div className="pp-popup__actions">
                   <button type="button" className="icon-btn" onClick={() => onNavigate(pandal.id)} title={t(language, 'navigateTo', { name })} aria-label={t(language, 'navigateTo', { name })}>
@@ -401,15 +508,15 @@ export function MapView(props: MapViewProps) {
             const state: PinState = visitedIds.has(pandal.id) ? 'visited'
               : selectedId === pandal.id ? 'selected'
                 : nextStopId === pandal.id ? 'next' : 'stop'
-            const label = formatNumber(language, index + 1)
+            const label = state === 'visited' ? '' : formatNumber(language, ordinals.get(pandal.id)!)
             return (
               <Marker
-                key={pandal.id}
+                key={`${pandal.id}:${state === 'visited' ? 'visited' : label}:${language}`}
                 position={[pandal.lat, pandal.lng]}
                 icon={pinIcon(label, state)}
                 interactive={!picking}
                 keyboard={!picking}
-                title={t(language, 'stopMarker', { n: label, name })}
+                title={state === 'visited' ? `${t(language, 'legendVisited')}: ${name}` : t(language, 'stopMarker', { n: label, name })}
                 zIndexOffset={state === 'selected' || state === 'next' ? 400 : 200}
                 eventHandlers={{ click: () => onSelect(pandal.id) }}
               >
@@ -430,7 +537,7 @@ export function MapView(props: MapViewProps) {
               pathOptions={{
                 color: selected ? '#a82329' : '#ffffff',
                 weight: selected ? 3 : 1.5,
-                fillColor: selected ? '#ffffff' : '#c98a1b',
+                fillColor: selected ? '#ffffff' : visitedIds.has(pandal.id) ? '#14664d' : pandal.kind === 'restaurant' ? '#267896' : pandal.kind === 'sight' ? '#85549b' : '#c98a1b',
                 fillOpacity: 1,
               }}
               eventHandlers={{ click: () => onSelect(pandal.id) }}
@@ -446,6 +553,9 @@ export function MapView(props: MapViewProps) {
             <Tooltip direction="top" offset={[0, -14]} className="pp-label">{t(language, 'startMarker', { name: origin.name })}</Tooltip>
           </Marker>
         )}
+        {home && <Marker position={[home.lat, home.lng]} icon={homeIcon} title={`${homeLabel ?? t(language, 'home')}: ${home.name}`} zIndexOffset={500}>
+          <Tooltip direction="top" offset={[0, -16]} className="pp-label">{homeLabel ?? t(language, 'home')}: {home.name}</Tooltip>
+        </Marker>}
         {devicePosition && (
           <>
             <Circle
@@ -457,12 +567,30 @@ export function MapView(props: MapViewProps) {
             <CircleMarker
               center={[devicePosition.lat, devicePosition.lng]}
               radius={7}
-              pathOptions={{ color: '#ffffff', weight: 2.5, fillColor: '#2a62c9', fillOpacity: 1 }}
+              pathOptions={{ className: 'pp-device pp-device--live', color: '#ffffff', weight: 2.5, fillColor: '#2a62c9', fillOpacity: 1 }}
             >
               <Tooltip direction="top" offset={[0, -6]} className="pp-label">{t(language, 'yourLocation')}</Tooltip>
             </CircleMarker>
           </>
         )}
+        {!devicePosition && lastKnownPosition && (
+          <>
+            <Circle
+              center={[lastKnownPosition.lat, lastKnownPosition.lng]}
+              radius={Math.min(400, Math.max(10, lastKnownPosition.accuracyMetres))}
+              pathOptions={{ color: '#6b7280', weight: 1, dashArray: '4 4', fillColor: '#6b7280', fillOpacity: 0.08 }}
+              interactive={false}
+            />
+            <CircleMarker
+              center={[lastKnownPosition.lat, lastKnownPosition.lng]}
+              radius={7}
+              pathOptions={{ className: 'pp-device pp-device--stale', color: '#ffffff', weight: 2.5, fillColor: '#6b7280', fillOpacity: 1 }}
+            >
+              <Tooltip direction="top" offset={[0, -6]} className="pp-label">{t(language, 'lastKnownLocation')}</Tooltip>
+            </CircleMarker>
+          </>
+        )}
+        {vehicle && <VehicleMarker vehicle={vehicle} label={t(language, vehicle.live ? 'vehicleLive' : 'vehicleStale')} />}
       </MapContainer>
 
       <div className="pp-map__tools" role="group" aria-label={t(language, 'mapTools')}>
@@ -501,8 +629,8 @@ export function MapView(props: MapViewProps) {
 
       {picking && <div className="pp-map__picker" role="region" aria-label={t(language, picking === 'origin' ? 'streetPickStart' : 'streetPickDestination')}>
         <strong>{t(language, picking === 'origin' ? 'streetPickStart' : 'streetPickDestination')}</strong>
-        <span role="status">{pickedPoint ? isStreetPoint(pickedPoint) ? `${pickedPoint.lat.toFixed(5)}, ${pickedPoint.lng.toFixed(5)}` : t(language, 'streetOutside') : t(language, 'streetPickHint')}</span>
-        <div><button className="btn btn--quiet" type="button" onClick={onCancelPick}>{t(language, 'cancel')}</button><button className="btn btn--primary" type="button" disabled={!pickedPoint || !isStreetPoint(pickedPoint)} onClick={onConfirmPick}>{t(language, 'streetChoosePoint')}</button></div>
+        <span role="status">{pickedPoint ? validPickedPoint ? `${pickedPoint.lat.toFixed(5)}, ${pickedPoint.lng.toFixed(5)}` : t(language, 'streetOutside') : t(language, 'streetPickHint')}</span>
+        <div><button className="btn btn--quiet" type="button" onClick={onCancelPick}>{t(language, 'cancel')}</button><button className="btn btn--primary" type="button" disabled={!validPickedPoint} onClick={onConfirmPick}>{t(language, 'streetChoosePoint')}</button></div>
       </div>}
 
       <div className="pp-map__overlays">
@@ -520,7 +648,7 @@ export function MapView(props: MapViewProps) {
         )}
         {streets === 'loading' && <div className="pp-map__banner pp-map__banner--quiet" role="status">{t(language, 'loadingStreets')}</div>}
         <ul id="map-legend" className={`pp-legend${legendOpen ? '' : ' is-collapsed'}`} aria-label={t(language, 'legend')}>
-          <li><span className={`pp-legend__line${directions ? ' pp-legend__line--street' : ''}`} aria-hidden="true" /> {t(language, directions ? 'streetLegend' : 'legendRoute')}</li>
+          <li><span className={`pp-legend__line${directions || carDirections ? ' pp-legend__line--street' : ''}`} aria-hidden="true" /> {t(language, carDirections ? 'carNetwork' : directions ? 'streetLegend' : 'legendRoute')}</li>
           {directions?.alternative && <li><span className="pp-legend__line pp-legend__line--alt" aria-hidden="true" /> {t(language, 'streetAltLegend', { name: t(language, directions.alternative.strategy === 'quieter' ? 'streetQuieter' : 'streetShortest') })}</li>}
           {directions && <li><span className="pp-legend__snap" aria-hidden="true" />{t(language, 'streetSnapDestination')}</li>}
           {directions && <li><span className="pp-legend__approx" aria-hidden="true" />{t(language, 'streetPinDestination')}</li>}
@@ -531,6 +659,9 @@ export function MapView(props: MapViewProps) {
           <li><span className="pp-legend__pin" aria-hidden="true">{formatNumber(language, 1)}</span> {t(language, 'legendStop')}</li>
           <li><span className="pp-legend__pin pp-legend__pin--visited" aria-hidden="true">✓</span> {t(language, 'legendVisited')}</li>
           <li><span className="pp-legend__pin pp-legend__pin--start" aria-hidden="true" /> {t(language, 'legendStart')}</li>
+          {home && <li><span className="pp-legend__pin pp-legend__pin--home" aria-hidden="true" /> {t(language, 'legendHome')}</li>}
+          {(devicePosition || lastKnownPosition) && <li><span className="pp-legend__device" aria-hidden="true" /> {t(language, 'legendDevice')}</li>}
+          {vehicle && <li><span className="pp-legend__vehicle" aria-hidden="true" /> {t(language, 'legendVehicle')}</li>}
         </ul>
       </div>
     </div>

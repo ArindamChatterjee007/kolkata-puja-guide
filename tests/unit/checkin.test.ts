@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { advanceCheckIn, createCheckInState, toggleManualVisit } from '../../src/domain/checkin'
-import type { CheckInInput, CheckInState } from '../../src/domain/checkin'
+import { advanceCheckIn, advanceNearbyCheckIn, CITY_CHECKIN_BOUNDS, createCheckInState,
+  createNearbyCheckInState, toggleManualVisit } from '../../src/domain/checkin'
+import type { CheckInInput, CheckInState, NearbyCheckInInput } from '../../src/domain/checkin'
 
 const start = Date.parse('2026-10-13T12:00:00Z')
 const stop = { id: 'first', lat: 22.5647, lng: 88.3519 }
@@ -13,6 +14,121 @@ function sample(offset: number, overrides: Partial<CheckInInput> = {}): CheckInI
     now: start + offset, foreground: true, optedIn: true, visits: [], ...overrides,
   }
 }
+
+function nearbySample(offset: number, overrides: Partial<NearbyCheckInInput> = {}): NearbyCheckInInput {
+  const input = sample(offset)
+  return { catalogue: [stop, second], city: 'kolkata', sample: input.sample, now: input.now,
+    foreground: true, optedIn: true, visits: [], ...overrides }
+}
+
+describe('catalogue-wide arrival checks', () => {
+  it('recognizes an unplanned catalogue place in each city after accurate continuous dwell', () => {
+    const fixtures = [{ city: 'kolkata' as const, lat: 22.5647, lng: 88.3519 },
+      { city: 'asansol' as const, lat: 23.685, lng: 86.975 },
+      { city: 'durgapur' as const, lat: 23.52, lng: 87.31 }]
+    for (const fixture of fixtures) {
+      const unplanned = { id: 'unplanned', ...fixture }
+      const catalogue = [unplanned, { ...unplanned, id: 'planned', lat: fixture.lat + 0.02 }]
+      const before = JSON.stringify(catalogue)
+      let state = createNearbyCheckInState()
+      for (const offset of [0, 15_000, 30_000, 45_000]) {
+        const result = advanceNearbyCheckIn(state, nearbySample(offset, { catalogue, city: fixture.city,
+          sample: { lat: fixture.lat, lng: fixture.lng, accuracyMetres: 20, speedMetresPerSecond: 0, at: start + offset } }))
+        state = result.state
+        if (offset < 45_000) expect(result.checkedInId).toBeNull()
+        else {
+          expect(result.checkedInId).toBe('unplanned')
+          expect(result.visits).toEqual([{ pandalId: 'unplanned', at: start + offset, method: 'auto' }])
+          expect(state.stationaryAnchor).toBeNull()
+          expect(result.notice).toContain('not confirmed entry')
+        }
+      }
+      expect(JSON.stringify(catalogue)).toBe(before)
+    }
+  })
+
+  it('does not choose between pins within GPS uncertainty but permits a clearly nearer pin', () => {
+    const other = { ...stop, id: 'other', lat: stop.lat + 0.00025 }
+    const input = nearbySample(0, { catalogue: [stop, other] })
+    const ambiguous = advanceNearbyCheckIn(createNearbyCheckInState(), input)
+    expect(ambiguous.status).toBe('ambiguous')
+    expect(ambiguous.checkedInId).toBeNull()
+    expect(ambiguous.candidateIds).toEqual(['first', 'other'])
+    const accurate = { ...input, sample: { ...input.sample!, accuracyMetres: 5 } }
+    expect(advanceNearbyCheckIn(createNearbyCheckInState(), accurate).state.targetId).toBe(stop.id)
+    const previousVisit = [{ pandalId: stop.id, at: start - 1, method: 'manual' as const }]
+    expect(advanceNearbyCheckIn(createNearbyCheckInState(), { ...input, visits: previousVisit }).status).toBe('ambiguous')
+  })
+
+  it('requires a declared local scope and rejects poor fixes, stale fixes and outside-city samples', () => {
+    const input = nearbySample(0)
+    expect(advanceNearbyCheckIn(createNearbyCheckInState(), { ...input, city: undefined }).status).toBe('outside-area')
+    for (const accuracyMetres of [61, -1, NaN]) {
+      expect(advanceNearbyCheckIn(createNearbyCheckInState(), { ...input,
+        sample: { ...input.sample!, accuracyMetres } }).status).toBe('invalid-sample')
+    }
+    expect(advanceNearbyCheckIn(createNearbyCheckInState(), { ...input, now: start + 20_000 }).status).toBe('invalid-sample')
+    expect(advanceNearbyCheckIn(createNearbyCheckInState(), { ...input, now: start - 1 }).status).toBe('invalid-sample')
+    const outside = { id: 'outside', lat: 28.6139, lng: 77.209 }
+    expect(advanceNearbyCheckIn(createNearbyCheckInState(), { ...input, catalogue: [outside],
+      sample: { ...outside, accuracyMetres: 10, at: start } }).status).toBe('outside-area')
+    expect(advanceNearbyCheckIn(createNearbyCheckInState(), { ...input, city: 'asansol' }).status).toBe('outside-area')
+  })
+
+  it('resets drive-bys, nonstationary fixes, gaps and hidden dwell instead of carrying time forward', () => {
+    const first = advanceNearbyCheckIn(createNearbyCheckInState(), nearbySample(0))
+    for (const speedMetresPerSecond of [3, 9]) {
+      const input = nearbySample(15_000)
+      expect(advanceNearbyCheckIn(first.state, { ...input, sample: { ...input.sample!, speedMetresPerSecond } }).status).toBe('moving')
+    }
+    const moved = nearbySample(15_000)
+    moved.sample!.lat += 0.0004
+    expect(advanceNearbyCheckIn(first.state, moved).status).toBe('moving')
+    expect(advanceNearbyCheckIn(first.state, nearbySample(20_000)).state.sampleCount).toBe(1)
+    expect(advanceNearbyCheckIn(first.state, nearbySample(0)).status).toBe('stale-sample')
+    expect(advanceNearbyCheckIn(first.state, nearbySample(15_000, { foreground: false })).state).toEqual(createNearbyCheckInState())
+    expect(advanceNearbyCheckIn(first.state, nearbySample(15_000, { optedIn: false })).status).toBe('paused')
+  })
+
+  it('preserves manual-unvisit suppression until a reliable move away and never duplicates a visit', () => {
+    const history = [{ pandalId: second.id, at: start - 1, method: 'manual' as const }]
+    const held = advanceNearbyCheckIn(createNearbyCheckInState(), nearbySample(0,
+      { visits: [...history, ...history], suppressedIds: [stop.id, stop.id] }))
+    expect(held.status).toBe('suppressed')
+    expect(held.visits).toHaveLength(1)
+    expect(held.suppressedIds).toEqual([stop.id])
+    const away = nearbySample(15_000, { visits: history, suppressedIds: held.suppressedIds })
+    away.sample!.lat += 0.003
+    const released = advanceNearbyCheckIn(held.state, away)
+    expect(released.suppressedIds).toEqual([])
+    let result = released
+    for (const offset of [30_000, 45_000, 60_000, 75_000]) {
+      result = advanceNearbyCheckIn(result.state, nearbySample(offset,
+        { visits: result.visits, suppressedIds: result.suppressedIds }))
+    }
+    expect(result.checkedInId).toBe(stop.id)
+    expect(result.visits).toHaveLength(2)
+    const repeated = advanceNearbyCheckIn(result.state, nearbySample(76_000, { visits: result.visits }))
+    expect(repeated.checkedInId).toBeNull()
+    expect(repeated.visits).toHaveLength(2)
+  })
+
+  it('supports explicit bounds, deduplicates catalogue IDs and refuses conflicting pin coordinates', () => {
+    const input = nearbySample(0, { catalogue: [stop, { ...stop }], city: undefined,
+      allowedBounds: CITY_CHECKIN_BOUNDS.kolkata })
+    const result = advanceNearbyCheckIn(createNearbyCheckInState(), input)
+    expect(result.status).toBe('dwelling')
+    expect(result.candidateIds).toEqual([stop.id])
+    const conflict = { ...input, catalogue: [stop, { ...stop, lat: stop.lat + 0.0001 }] }
+    expect(advanceNearbyCheckIn(createNearbyCheckInState(), conflict).status).toBe('ambiguous')
+    const reversedConflict = { ...input, catalogue: [{ ...stop, lat: stop.lat + 0.02 }, stop, { ...stop, id: 'alternative' }] }
+    expect(advanceNearbyCheckIn(createNearbyCheckInState(), reversedConflict).status).toBe('ambiguous')
+    const otherCity = nearbySample(0, { catalogue: [{ ...stop, city: 'durgapur' }] })
+    expect(advanceNearbyCheckIn(createNearbyCheckInState(), otherCity).checkedInId).toBeNull()
+    const badBounds = { minLat: 24, maxLat: 23, minLng: 87, maxLng: 88 }
+    expect(advanceNearbyCheckIn(createNearbyCheckInState(), { ...input, allowedBounds: badBounds }).status).toBe('outside-area')
+  })
+})
 
 describe('privacy-preserving check-ins', () => {
   it('requires sustained foreground dwell and returns an auto visit with no coordinates', () => {

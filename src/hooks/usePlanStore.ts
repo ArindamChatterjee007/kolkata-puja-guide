@@ -12,6 +12,7 @@ export type PlanAction =
   | { type: 'language', language: Language }
   | { type: 'start', startId: string }
   | { type: 'add', id: string }
+  | { type: 'addManual', id: string }
   | { type: 'remove', id: string }
   | { type: 'move', id: string, delta: number }
   | { type: 'stops', stopIds: string[], startId?: string }
@@ -53,9 +54,9 @@ function pruneReports(reports: readonly CrowdReport[], now: number): CrowdReport
 }
 
 function createReducer(options: StoreOptions) {
-  const known = new Set(options.knownIds)
   const starts = new Set(options.startIds)
   return function reduce(state: SavedPlan, action: PlanAction): SavedPlan {
+    const known = new Set([...options.knownIds, ...state.stopIds.filter((id) => id.startsWith('manual-'))])
     switch (action.type) {
       case 'language':
         return { ...state, language: action.language }
@@ -63,6 +64,9 @@ function createReducer(options: StoreOptions) {
         return starts.has(action.startId) ? { ...state, startId: action.startId } : state
       case 'add':
         if (!known.has(action.id) || state.stopIds.includes(action.id) || state.stopIds.length >= 12) return state
+        return { ...state, stopIds: [...state.stopIds, action.id] }
+      case 'addManual':
+        if (!/^manual-[a-zA-Z0-9_-]{1,120}$/.test(action.id) || state.stopIds.includes(action.id) || state.stopIds.length >= 12) return state
         return { ...state, stopIds: [...state.stopIds, action.id] }
       case 'remove':
         return { ...state, stopIds: state.stopIds.filter((id) => id !== action.id) }
@@ -85,7 +89,7 @@ function createReducer(options: StoreOptions) {
         return { ...state, availableMinutes: action.availableMinutes }
       case 'toggleVisit':
         if (!known.has(action.id)) return state
-        return { ...state, visits: toggleManualVisit(state.visits, action.id, options.knownIds, action.now) }
+        return { ...state, visits: toggleManualVisit(state.visits, action.id, [...known], action.now) }
       case 'unvisit':
         return { ...state, visits: state.visits.filter((visit) => visit.pandalId !== action.id) }
       case 'visits':
@@ -166,7 +170,9 @@ export function usePlanStore(options: StoreOptions) {
 
   useEffect(() => {
     if (!initial.storage) return
-    const result = savePlan(initial.storage, plan)
+    const publicIds = new Set(optionsRef.current.knownIds)
+    const result = savePlan(initial.storage, { ...plan, stopIds: plan.stopIds.filter((id) => publicIds.has(id)),
+      visits: plan.visits.filter((visit) => publicIds.has(visit.pandalId)), reports: plan.reports.filter((report) => publicIds.has(report.pandalId)) })
     setSaveError(result.ok ? null : result.error)
   }, [plan, initial.storage])
 

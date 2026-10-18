@@ -2,25 +2,32 @@ import {
   ArrowDown, ArrowUp, CarFront, Check, ExternalLink, Footprints, LocateFixed, MapPin, Navigation, Play, Sparkles, Square,
   TrainFront, Trash2, TriangleAlert, Undo2,
 } from 'lucide-react'
-import type { Coordinate, Landmark, Language, Pace, Pandal, TravelPreference, Visit } from '../types'
+import type { ReactNode } from 'react'
+import type { Coordinate, JourneyStop, Landmark, Language, Pace, TravelPreference, Visit } from '../types'
 import type { SavedPlan } from '../domain/storage'
 import type { PlannedStop } from '../domain/route'
 import type { LegEstimate } from '../domain/travel'
 import type { DevicePosition, LocationStatus } from '../hooks/useGeolocation'
 import {
   crowdLabel, formatClock, formatDuration, formatDurationRange, formatMinuteRange, formatNumber, modeLabel, otherName,
-  pickName, t,
+  pickName, t, formatTripClock,
 } from '../i18n'
 import { Segmented } from './Segmented'
 import { NearbyPandals } from './NearbyPandals'
 import type { NearbyPandalsProps } from './NearbyPandals'
-import { directionsUrl, explainLeg } from './uiState'
+import { directionsUrl, explainLeg, pendingStopOrdinals } from './uiState'
 import type { DepartureOption, PlanFreshness, PlanSnapshot } from './uiState'
 
 interface RouteTabProps {
   language: Language
   plan: SavedPlan
-  stops: readonly Pandal[]
+  stops: readonly JourneyStop[]
+  tripControls?: ReactNode
+  optimizing?: boolean
+  canOptimize?: boolean
+  lockedStopId?: string | null
+  displayOrigin?: string
+  publicOrigin?: Coordinate | null
   visits: readonly Visit[]
   startPoints: readonly Landmark[]
   originMode: 'landmark' | 'device'
@@ -77,7 +84,7 @@ function LegOption({ language, option }: { language: Language, option: LegEstima
           <> · {t(language, 'via', { stations: `${option.stationNames[0]} → ${option.stationNames[option.stationNames.length - 1]}` })}</>
         )}
         {option.mode === 'metro' && option.transfers ? ` · ${t(language, 'transfers', { n: formatNumber(language, option.transfers) })}` : ''}
-        {option.mode === 'road' && ` · ${t(language, 'modeRoadHint')}`}
+        {option.mode === 'road' && option.transport !== 'personal' && ` · ${t(language, 'modeRoadHint')}`}
       </span>
     </>
   )
@@ -92,22 +99,24 @@ export function RouteTab(props: RouteTabProps) {
     onStartJourney, onStopJourney, onAutoToggle, onNavigate,
   } = props
   const visitById = new Map(visits.map((visit) => [visit.pandalId, visit]))
+  const ordinals = pendingStopOrdinals(stops.map((stop) => stop.id), new Set(visitById.keys()))
   const route = snapshot?.plan ?? null
   const showEstimates = route !== null && (freshness === 'fresh' || freshness === 'visits-changed')
-  const plannedById = new Map<string, PlannedStop>(route ? route.stops.map((stop) => [stop.pandalId, stop]) : [])
+  const plannedById = new Map<string, PlannedStop<JourneyStop>>(route ? route.stops.map((stop) => [stop.pandalId, stop]) : [])
   const plannedIndex = new Map<string, number>(route ? route.stops.map((stop, index) => [stop.pandalId, index]) : [])
   const stopById = new Map(stops.map((stop) => [stop.id, stop]))
   const visitedCount = stops.filter((stop) => visitById.has(stop.id)).length
   const nextStop = nextStopId ? stopById.get(nextStopId) ?? null : null
   const landmark = startPoints.find((point) => point.id === plan.startId) ?? startPoints[0]
   const usingDevice = originMode === 'device' && devicePosition !== null
-  const originName = usingDevice ? t(language, nearby?.lastKnown ? 'lastKnownLocation' : 'yourLocation') : pickName(language, landmark)
-  const originPoint: Coordinate | null = usingDevice ? null : landmark
+  const originName = props.displayOrigin ?? (usingDevice ? t(language, nearby?.lastKnown ? 'lastKnownLocation' : 'yourLocation') : pickName(language, landmark))
+  const originPoint: Coordinate | null = props.publicOrigin === undefined ? usingDevice ? null : landmark : props.publicOrigin
 
-  const budgetOptions = [120, 240, 360, 480].map((minutes) => ({
+  const budgetMinutes = [120, 240, 360, 480, 720]
+  const budgetOptions = budgetMinutes.map((minutes) => ({
     value: String(minutes), label: t(language, 'hours', { n: formatNumber(language, minutes / 60) }),
   }))
-  const nextBudget = route?.overBudget ? [120, 240, 360, 480].find((minutes) => minutes > route.availableMinutes) ?? null : null
+  const nextBudget = route?.overBudget ? budgetMinutes.find((minutes) => minutes > route.availableMinutes) ?? null : null
 
   function legDirectionsOrigin(index: number): Coordinate | null {
     if (!route) return originPoint
@@ -201,7 +210,7 @@ export function RouteTab(props: RouteTabProps) {
         </div>
       )}
 
-      <section className="block" aria-labelledby="start-heading">
+      {props.tripControls ?? <section className="block" aria-labelledby="start-heading">
         <h2 id="start-heading" className="section-title">{t(language, 'startFrom')}</h2>
         <div className="start-row">
           <label className={usingDevice ? 'select select--stacked' : 'select'}>
@@ -236,7 +245,7 @@ export function RouteTab(props: RouteTabProps) {
             <TriangleAlert size={16} aria-hidden="true" /> {locationNotice}
           </p>
         )}
-      </section>
+      </section>}
 
       <section className="block" aria-labelledby="stops-heading">
         <div className="block__head">
@@ -244,16 +253,17 @@ export function RouteTab(props: RouteTabProps) {
             {t(language, 'stopsHeading')} <span className="count">{t(language, 'stopsOf', { n: formatNumber(language, stops.length) })}</span>
           </h2>
           {stops.length > 0 && (
-            <button type="button" className="btn btn--small btn--quiet" onClick={onClear}>{t(language, 'clearStops')}</button>
+            <button type="button" className="btn btn--small btn--quiet" disabled={Boolean(props.lockedStopId)} onClick={onClear} title={props.lockedStopId ? t(language, 'lockedDestination') : undefined}>{t(language, 'clearStops')}</button>
           )}
         </div>
 
         <div className="optimize">
-          <button type="button" className="btn btn--primary btn--block" onClick={onOptimize} disabled={stops.length === 0} title={t(language, 'nearestFirstHint')}>
+          <button type="button" className="btn btn--primary btn--block" onClick={onOptimize} disabled={stops.length === 0 || props.optimizing || props.canOptimize === false} title={t(language, 'fastestHint')}>
             <Sparkles size={18} aria-hidden="true" />
             {snapshot ? t(language, 'reoptimize') : t(language, 'optimize')}
           </button>
           {planError && <p className="hint hint--warn" role="alert">{t(language, 'planFailed')}</p>}
+          {props.canOptimize === false && stops.length > 0 && <p className="hint hint--warn">{t(language, 'homeRequired')}</p>}
           {snapshot && freshness === 'changed' && <p className="hint hint--warn">{t(language, 'planChanged')}</p>}
           {snapshot && freshness === 'location-changed' && <p className="hint hint--warn" role="status">{t(language, 'planLocationChanged')}</p>}
           {showEstimates && (freshness === 'visits-changed' || aged) && (
@@ -270,20 +280,24 @@ export function RouteTab(props: RouteTabProps) {
             <p className="estimate__total">
               <strong>{t(language, 'totalDuration', { range: formatDurationRange(language, route.totals.durationMinutes) })}</strong>
               {route.stops.length > 0 && (
-                <> · {t(language, 'finishBy', {
-                  a: formatClock(language, route.stops[route.stops.length - 1].departureWindow.earliest),
-                  b: formatClock(language, route.stops[route.stops.length - 1].departureWindow.latest),
-                })}</>
+                <> · {route.homeLeg
+                  ? `${t(language, 'tripBackHome')} ${formatTripClock(language, route.estimatedFinish.earliest, route.departureTimestamp)}–${formatTripClock(language, route.estimatedFinish.latest, route.departureTimestamp)}`
+                  : t(language, 'finishBy', {
+                    a: formatTripClock(language, route.estimatedFinish.earliest, route.departureTimestamp),
+                    b: formatTripClock(language, route.estimatedFinish.latest, route.departureTimestamp),
+                  })}</>
               )}
             </p>
             <p className="estimate__breakdown">
-              {t(language, 'breakdown', {
+              {t(language, route.transport === 'personal' ? 'carBreakdown' : 'breakdown', {
                 travel: formatDuration(language, route.totals.travelMinutes.min) + ' – ' + formatDuration(language, route.totals.travelMinutes.max),
                 queue: formatDuration(language, route.totals.queueMinutes.min) + ' – ' + formatDuration(language, route.totals.queueMinutes.max),
                 visit: formatNumber(language, route.totals.visitMinutes),
                 km: formatNumber(language, route.totals.walkKm, 1),
               })}
             </p>
+            {route.transport === 'personal' && <p className="hint">{t(language, 'carAccessNote')}</p>}
+            {(route.totals.breakMinutes > 0 || route.totals.activeDwellMinutes > 0) && <p className="hint">{t(language, 'breaksHeading')}: {formatDuration(language, route.totals.breakMinutes + route.totals.activeDwellMinutes)}</p>}
             {route.overBudget && (
               <div className="hint hint--warn estimate__budget" role="alert">
                 <TriangleAlert size={16} aria-hidden="true" />
@@ -327,7 +341,7 @@ export function RouteTab(props: RouteTabProps) {
                       <div className="leg__main">
                         <ModeIcon mode={planned.leg.mode} />
                         <span>
-                          <strong>{modeLabel(language, planned.leg.mode)}</strong> {formatMinuteRange(language, planned.leg.durationMinutes)}
+                          <strong>{planned.leg.transport === 'personal' ? t(language, 'ownCar') : modeLabel(language, planned.leg.mode)}</strong> {formatMinuteRange(language, planned.leg.durationMinutes)}
                           {planned.leg.mode === 'metro' && planned.leg.stationNames && (
                             <> · {t(language, 'via', { stations: `${planned.leg.stationNames[0]} → ${planned.leg.stationNames[planned.leg.stationNames.length - 1]}` })}</>
                           )}
@@ -355,7 +369,7 @@ export function RouteTab(props: RouteTabProps) {
                   )}
                   <div className="stop__row">
                     <span className={`stop__badge${visit ? ' stop__badge--visited' : ''}`} aria-hidden="true">
-                      {visit ? <Check size={16} /> : formatNumber(language, index + 1)}
+                      {visit ? <Check size={16} /> : formatNumber(language, ordinals.get(stop.id)!)}
                     </span>
                     <div className="stop__main">
                       <button type="button" className="link-title" onClick={() => onOpenDetails(stop.id)} title={t(language, 'detailsFor', { name })}>
@@ -404,7 +418,7 @@ export function RouteTab(props: RouteTabProps) {
                       <button type="button" className="icon-btn" onClick={() => onMove(stop.id, 1)} disabled={index === stops.length - 1} aria-label={t(language, 'moveDown', { name })} title={t(language, 'moveDown', { name })}>
                         <ArrowDown size={18} aria-hidden="true" />
                       </button>
-                      <button type="button" className="icon-btn icon-btn--danger" onClick={() => onRemove(stop.id)} aria-label={t(language, 'removeFromRoute', { name })} title={t(language, 'remove')}>
+                      <button type="button" className="icon-btn icon-btn--danger" disabled={props.lockedStopId === stop.id} onClick={() => onRemove(stop.id)} aria-label={t(language, 'removeFromRoute', { name })} title={props.lockedStopId === stop.id ? t(language, 'lockedDestination') : t(language, 'remove')}>
                         <Trash2 size={18} aria-hidden="true" />
                       </button>
                     </div>
@@ -418,7 +432,7 @@ export function RouteTab(props: RouteTabProps) {
 
       {settingsSection}
 
-      <section className="block journey" aria-labelledby="journey-heading">
+      {!props.tripControls && <section className="block journey" aria-labelledby="journey-heading">
         <div className="block__head">
           <h2 id="journey-heading" className="section-title">{t(language, 'journey')}</h2>
           {stops.length > 0 && (
@@ -464,7 +478,7 @@ export function RouteTab(props: RouteTabProps) {
             <Play size={16} aria-hidden="true" /> {t(language, 'startJourney')}
           </button>
         )}
-      </section>
+      </section>}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getLegAlternatives } from '../../src/domain/travel'
+import { getLegAlternatives, validateLegOptions } from '../../src/domain/travel'
 import type { LegInput } from '../../src/domain/travel'
 import type { MetroStation } from '../../src/types'
 
@@ -25,6 +25,55 @@ function request(overrides: Partial<LegInput> = {}): LegInput {
 }
 
 describe('travel alternatives', () => {
+  it('keeps a personal car on every hop without recurring pickup overhead', () => {
+    const input = request({ transport: 'personal' })
+    const options = getLegAlternatives(input)
+    expect(options.alternatives).toHaveLength(1)
+    expect(options.recommended).toMatchObject({ mode: 'road', transport: 'personal', walkMetres: 0 })
+    expect(options.recommended.durationMinutes.max).toBeLessThan(10)
+    expect(options.recommended.uncertainty).toContain('No taxi pickup')
+    expect(options.recommended.provenance).toBe('geographic-model')
+    expect(validateLegOptions(options, input)).toBe(options)
+    expect(getLegAlternatives({ ...input, to: input.from }).recommended.durationMinutes).toEqual({ min: 0, max: 0 })
+  })
+
+  it('varies car estimates by departure and explicit urban or rural assumptions', () => {
+    const input = request({ transport: 'personal', to: stations[0] })
+    const peak = getLegAlternatives(input).recommended
+    const daytime = getLegAlternatives({ ...input, departureTimestamp: Date.parse('2026-10-13T06:00:00Z') }).recommended
+    const rural = getLegAlternatives({ ...input, roadContext: 'rural' }).recommended
+    expect(peak.durationMinutes.max).toBeGreaterThan(daytime.durationMinutes.max)
+    expect(rural.durationMinutes.max).toBeLessThan(peak.durationMinutes.max)
+    expect(rural.uncertainty).toContain('60-80')
+    expect(peak.uncertainty).toContain('no live feed')
+  })
+
+  it('makes walk-only transport strict while omitted transport retains public alternatives', () => {
+    const input = request({ from: stations[0], to: stations[3], metroStations: stations })
+    const walking = getLegAlternatives({ ...input, transport: 'walk' })
+    expect(walking.alternatives.map((leg) => leg.mode)).toEqual(['walk'])
+    expect(getLegAlternatives(input)).toEqual(getLegAlternatives({ ...input, transport: 'public' }))
+    expect(() => getLegAlternatives({ ...input, transport: 'taxi' as never })).toThrow(RangeError)
+  })
+
+  it('rejects malformed or mode-incompatible injected legs and accepts labelled street paths', () => {
+    const input = request({ transport: 'personal' })
+    const options = getLegAlternatives(input)
+    const valid = options.recommended
+    const candidates = [
+      { ...valid, durationMinutes: { min: 5, max: 4 } },
+      { ...valid, durationMinutes: { min: NaN, max: 5 } },
+      { ...valid, geometry: [input.to, input.from] },
+      { ...valid, mode: 'metro' as const },
+      { ...valid, uncertainty: '' },
+    ]
+    for (const recommended of candidates) {
+      expect(() => validateLegOptions({ recommended, alternatives: [recommended] }, input)).toThrow(RangeError)
+    }
+    const provided = { ...valid, geometryKind: 'street-path' as const, provenance: 'street-network' as const }
+    expect(validateLegOptions({ recommended: provided, alternatives: [provided] }, input).recommended).toEqual(provided)
+  })
+
   it('recommends walking for a short crowded trip and labels road and geometry honestly', () => {
     const options = getLegAlternatives(request({ metroStations: stations }))
     expect(options.recommended.mode).toBe('walk')

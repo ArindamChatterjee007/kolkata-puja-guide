@@ -1,16 +1,19 @@
-import { Check, ExternalLink, MapPin, Minus, Navigation, Plus, Undo2 } from 'lucide-react'
-import type { CrowdLevel, CrowdReport, Language, MetroStation, Pandal, Visit } from '../types'
+import { Check, ExternalLink, ImageOff, MapPin, Minus, Navigation, Plus, Undo2 } from 'lucide-react'
+import type { CrowdLevel, CrowdReport, JourneyStop, Language, MetroStation, Visit } from '../types'
 import { estimateCrowd } from '../domain/crowd'
 import { haversineMetres } from '../domain/geo'
 import { PANDAL_MEDIA } from '../data/pandalMedia'
 import { crowdLabel, formatClock, formatDate, formatDuration, formatMinuteRange, formatNumber, otherName, pickName, t, zoneLabel } from '../i18n'
 import { Modal } from './Modal'
 import { PandalPreview } from './PandalPreview'
+import { RegionalPreviews } from './RegionalPreviews'
 import { reportTimeLeftMs } from './uiState'
+import { hasCrowdModel, isEditorPick } from '../data/regions'
+import { PLACE_INSIGHTS } from '../data/placeInsights'
 
 interface PandalDialogProps {
   language: Language
-  pandal: Pandal | null
+  pandal: JourneyStop | null
   now: number
   stopIds: readonly string[]
   visit: Visit | undefined
@@ -34,7 +37,8 @@ export function PandalDialog(props: PandalDialogProps) {
   } = props
   const open = pandal !== null
   const name = pandal ? pickName(language, pandal) : ''
-  const crowd = pandal ? estimateCrowd(pandal, now, report) : null
+  const crowd = pandal && hasCrowdModel(pandal) ? estimateCrowd(pandal, now, report) : null
+  const insight = pandal ? PLACE_INSIGHTS[pandal.id] : undefined
   const inRoute = pandal ? stopIds.includes(pandal.id) : false
   const metro = pandal?.nearestMetro ? metroStations.find((station) => station.id === pandal.nearestMetro) : undefined
   const metroMetres = pandal && metro ? haversineMetres(pandal, metro) : null
@@ -45,15 +49,16 @@ export function PandalDialog(props: PandalDialogProps) {
 
   return (
     <Modal open={open} onClose={onClose} title={name} closeLabel={t(language, 'close')}>
-      {pandal && crowd && (
+      {pandal && (
         <div className="detail">
           <div className="detail__media">
-            <PandalPreview language={language} media={PANDAL_MEDIA[pandal.id]} variant="detail" />
+            {PANDAL_MEDIA[pandal.id] ? <PandalPreview language={language} media={PANDAL_MEDIA[pandal.id]} variant="detail" />
+              : <div className="place-no-photo place-no-photo--detail"><ImageOff size={32} aria-hidden="true" /><span>{t(language, 'noPlacePhoto')}</span></div>}
           </div>
           <p className="detail__alt">
             <span className="alt-name">{otherName(language, pandal)}</span>
-            <span className="chip-static">{zoneLabel(language, pandal.zone)}</span>
-            {pandal.featured && <span className="chip-static chip-static--ochre">{t(language, 'featuredLabel')}</span>}
+            <span className="chip-static">{zoneLabel(language, pandal.zone) || pandal.city}</span>
+            {isEditorPick(pandal) && <span className="chip-static chip-static--ochre">{t(language, 'featuredLabel')}</span>}
           </p>
           <p className="detail__highlight">{language === 'bn' ? pandal.highlightBn : pandal.highlight}</p>
 
@@ -86,6 +91,17 @@ export function PandalDialog(props: PandalDialogProps) {
           )}
 
           <p>{language === 'bn' ? pandal.descriptionBn : pandal.description}</p>
+          {insight?.media.previews && <RegionalPreviews key={pandal.id} language={language} previews={insight.media.previews} />}
+          {insight && <section className="detail__section" aria-label={t(language, 'historyHeading')}>
+            <h3 className="section-title">{t(language, 'historyHeading')}</h3>
+            {insight.history && <p>{language === 'bn' ? insight.historyBn ?? insight.history : insight.history}</p>}
+            {insight.featuredReason && <p>{insight.featuredReason}</p>}
+            {insight.food && <><p><strong>{t(language, 'knownCuisine')}: </strong>{insight.food.cuisine?.join(', ') ?? t(language, 'hoursUnknown')}</p>
+              <p className="hint">{t(language, 'hoursUnknown')}</p><p className="hint">{t(language, 'foodNote')}</p></>}
+            <ul className="place-sources">{insight.sources.map((source, index) => <li key={`${source.url}-${index}`}>
+              <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title}</a><small>{source.publisher}{source.publishedAt ? ` · ${source.publishedAt}` : ''}</small>
+            </li>)}</ul>
+          </section>}
 
           <dl className="facts">
             <div>
@@ -101,11 +117,11 @@ export function PandalDialog(props: PandalDialogProps) {
             </div>
             <div>
               <dt>{t(language, 'visitAllowance', { n: formatNumber(language, pandal.visitMinutes) })}</dt>
-              <dd>{t(language, 'popularity', { n: formatNumber(language, pandal.popularity) })}</dd>
+              <dd>{pandal.popularity ? t(language, 'popularity', { n: formatNumber(language, pandal.popularity) }) : t(language, 'queueUnknown')}</dd>
             </div>
           </dl>
 
-          <section className="detail__section" aria-labelledby="crowd-heading">
+          {crowd && <section className="detail__section" aria-labelledby="crowd-heading">
             <h3 id="crowd-heading" className="section-title">{t(language, 'reportCrowd')}</h3>
             <p className="detail__crowd">
               <span className={`crowd crowd--${crowd.level}`}>{crowdLabel(language, crowd.level)}</span>
@@ -136,7 +152,7 @@ export function PandalDialog(props: PandalDialogProps) {
             ) : (
               <p className="hint">{t(language, 'reportHint')}</p>
             )}
-          </section>
+          </section>}
 
           <section className="detail__section" aria-labelledby="source-heading">
             <h3 id="source-heading" className="section-title">{t(language, 'source')}</h3>

@@ -3,7 +3,7 @@ import type { Page, TestInfo } from '@playwright/test'
 import { FESTIVAL_PORTRAIT } from '../../src/data/pandalMedia'
 import { t } from '../../src/i18n'
 import type { Language } from '../../src/types'
-import { expect, FIXED_TIME, geoCalls, savedPlan, seedPlan, setVisibility, STORAGE_KEY, test } from './planner.fixture'
+import { expect, FIXED_TIME, geoCalls, savedPlan, seedPlan, setVisibility, STORAGE_KEY, test, choosePublicHome } from './planner.fixture'
 
 test.use({ autoSkipFestivalIntro: false })
 
@@ -210,10 +210,11 @@ async function expectPortraitCredit(dialog: ReturnType<Page['locator']>, languag
 }
 
 test('opens above an inert planner, credits the licensed photo, and Skip returns focus to the page', async ({ page }, testInfo) => {
+  await page.clock.install({ time: FIXED_TIME })
+  await page.clock.pauseAt(new Date(FIXED_TIME.getTime() + 1_000))
   await page.goto('/')
   const dialog = introDialog(page)
   await expect(dialog).toBeVisible()
-  const visibleAt = Date.now()
   const skip = skipButton(page)
   await expect(skip).toBeVisible()
   await expect(skip).toBeFocused()
@@ -224,9 +225,12 @@ test('opens above an inert planner, credits the licensed photo, and Skip returns
   await expectPortraitCredit(dialog, 'en')
   await expect(dialog.getByRole('link', { name: 'Wikimedia Commons', exact: true })).toHaveAttribute('href', SOURCE_URL)
   await expect(dialog.getByRole('link', { name: 'CC BY 3.0', exact: true })).toHaveAttribute('href', LICENSE_URL)
-  await waitSince(page, visibleAt, 300)
+  await page.clock.runFor(300)
   await capture(page, testInfo, '1440-en-intro-0.3s')
-  await waitSince(page, visibleAt, 1_100)
+  await page.clock.runFor(800)
+  await dialog.evaluate((element) => Promise.all(element.getAnimations({ subtree: true })
+    .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+    .map((animation) => animation.finished)))
   const geometry = await introGeometry(page)
   await testInfo.attach('1440-en-intro-geometry', { contentType: 'application/json', body: JSON.stringify(geometry, null, 2) })
   expect(geometry.modal).toBe(true)
@@ -264,11 +268,12 @@ test('opens above an inert planner, credits the licensed photo, and Skip returns
   await expect(page.locator('html')).toHaveAttribute('lang', 'bn')
   await page.locator('header button[role="radio"][lang="en"]').click()
   await page.getByRole('tab', { name: /^Your route/ }).click()
+  await choosePublicHome(page, 'start-blue-shyambazar')
   await page.getByRole('button', { name: 'Optimize route', exact: true }).click()
   await expect(page.locator('.estimate')).toBeVisible()
-  await page.waitForTimeout(300)
+  await page.clock.runFor(300)
   expect(await focusState(page)).toMatchObject({ openIntros: 0 })
-  expect(await storageState(page)).toEqual({ local: [STORAGE_KEY], session: [] })
+  expect(await storageState(page)).toEqual({ local: [STORAGE_KEY, 'kolkata-puja-guide:trip:v1'], session: [] })
   expect(await geoCalls(page)).toEqual({ once: 0, started: 0, active: 0 })
   await page.reload()
   await expect(dialog).toBeVisible()
@@ -451,7 +456,7 @@ for (const [width, height] of [[320, 568], [390, 844], [1440, 1000]] as const) {
       await expect(page.locator('.pp-map')).toHaveAttribute('data-streets', 'ready')
       await capture(page, testInfo, `${width}-${language}-after-dismiss`)
       expect(await savedPlan(page)).toEqual(before)
-      expect(await storageState(page)).toEqual({ local: [STORAGE_KEY], session: [] })
+      expect(await storageState(page)).toEqual({ local: [STORAGE_KEY, 'kolkata-puja-guide:trip:v1'], session: [] })
       expect(await geoCalls(page)).toEqual({ once: 0, started: 0, active: 0 })
       await page.getByRole('tab', { name: t(language, 'tabExplore'), exact: true }).click()
       await expect(page.getByRole('tab', { name: t(language, 'tabExplore'), exact: true })).toHaveAttribute('aria-selected', 'true')
