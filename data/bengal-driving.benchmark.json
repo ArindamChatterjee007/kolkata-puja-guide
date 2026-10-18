@@ -1,0 +1,324 @@
+{
+  "measuredAt": "2026-10-18T04:31:49.319Z",
+  "environment": "macOS Node/Vitest; public demo coordinates only; not phone or live-traffic performance",
+  "routes": [
+    {
+      "from": "durgapur-sepco",
+      "to": "durgapur-marconi",
+      "routeMs": 5.994791999999961,
+      "status": "ok",
+      "metres": 2476.2317859021587,
+      "seconds": {
+        "min": 388.59829336534995,
+        "max": 863.551763034111
+      },
+      "geometryPoints": 96,
+      "steps": 11,
+      "originOffset": 30.19833153321043,
+      "destinationOffset": 56.943214770886776,
+      "refs": []
+    },
+    {
+      "from": "asansol-hotel",
+      "to": "durgapur-sepco",
+      "routeMs": 246.12908300000026,
+      "status": "ok",
+      "metres": 39327.372100382905,
+      "seconds": {
+        "min": 3119.4793364394054,
+        "max": 6723.564251998679
+      },
+      "geometryPoints": 504,
+      "steps": 51,
+      "originOffset": 2.8153661398155507,
+      "destinationOffset": 30.19833153321043,
+      "refs": [
+        "NH19",
+        "NH14;NH19"
+      ]
+    },
+    {
+      "from": "kolkata-esplanade",
+      "to": "durgapur-sepco",
+      "routeMs": 630.9934579999999,
+      "status": "ok",
+      "metres": 195045.39515291786,
+      "seconds": {
+        "min": 10743.678100674078,
+        "max": 20580.678425320166
+      },
+      "geometryPoints": 3090,
+      "steps": 198,
+      "originOffset": 2.5338873544003153,
+      "destinationOffset": 30.19833153321043,
+      "refs": [
+        "SH6",
+        "SH15",
+        "NH12;NH16",
+        "NH12;NH19",
+        "NH19",
+        "NH114",
+        "SH14"
+      ]
+    }
+  ],
+  "assets": {
+    "files": 8,
+    "totalBytes": 17127284,
+    "gzipBytes": 5385256,
+    "maximumChunkBytes": 8388328,
+    "datasetSha256": "396b75c8d885ce8c18f6ac37250ccced710c90211ce031230d3024790cb72474"
+  },
+  "graph": {
+    "measuredAt": "2026-10-18T04:31:32.154Z",
+    "nodes": 140387,
+    "polylines": 178867,
+    "directedStates": 343870,
+    "transitions": 628338,
+    "geometryPoints": 864607,
+    "constructionMs": 1114.075375,
+    "restrictions": {
+      "viaNodeRelations": 30,
+      "conservativelyBlockedRelations": 109,
+      "malformedRelationsExcluded": 8,
+      "forbiddenTransitions": 246,
+      "immediateReversalsBlocked": 330006
+    },
+    "heapDeltaMiB": 730.2705841064453,
+    "source": "2026-10-14T20:21:12Z"
+  },
+  "matrix": {
+    "measuredAt": "2026-10-18T04:31:40.221Z",
+    "milliseconds": 7158.962459,
+    "points": [
+      "kolkata-esplanade",
+      "asansol-hotel",
+      "durgapur-sepco",
+      "durgapur-marconi",
+      "kalyaneshwari-area"
+    ],
+    "rows": [
+      [
+        {
+          "metres": 0,
+          "minutes": {
+            "min": 0,
+            "max": 0
+          }
+        },
+        {
+          "metres": 252883,
+          "minutes": {
+            "min": 219,
+            "max": 410
+          }
+        },
+        {
+          "metres": 195045,
+          "minutes": {
+            "min": 180,
+            "max": 344
+          }
+        },
+        {
+          "metres": 198251,
+          "minutes": {
+            "min": 185,
+            "max": 356
+          }
+        },
+        {
+          "metres": 272470,
+          "minutes": {
+            "min": 250,
+            "max": 477
+          }
+        }
+      ],
+      [
+        {
+          "metres": 207796,
+          "minutes": {
+            "min": 201,
+            "max": 396
+          }
+        },
+        {
+          "metres": 0,
+          "minutes": {
+            "min": 0,
+            "max": 0
+          }
+        },
+        {
+          "metres": 39327,
+          "minutes": {
+            "min": 52,
+            "max": 113
+          }
+        },
+        {
+          "metres": 37712,
+          "minutes": {
+            "min": 51,
+            "max": 110
+          }
+        },
+        {
+          "metres": 23167,
+          "minutes": {
+            "min": 36,
+            "max": 80
+          }
+        }
+      ],
+      [
+        {
+          "metres": 172876,
+          "minutes": {
+            "min": 156,
+            "max": 300
+          }
+        },
+        {
+          "metres": 40667,
+          "minutes": {
+            "min": 55,
+            "max": 117
+          }
+        },
+        {
+          "metres": 0,
+          "minutes": {
+            "min": 0,
+            "max": 0
+          }
+        },
+        {
+          "metres": 2476,
+          "minutes": {
+            "min": 7,
+            "max": 15
+          }
+        },
+        {
+          "metres": 60254,
+          "minutes": {
+            "min": 85,
+            "max": 185
+          }
+        }
+      ],
+      [
+        {
+          "metres": 176065,
+          "minutes": {
+            "min": 162,
+            "max": 312
+          }
+        },
+        {
+          "metres": 39615,
+          "minutes": {
+            "min": 54,
+            "max": 116
+          }
+        },
+        {
+          "metres": 2426,
+          "minutes": {
+            "min": 7,
+            "max": 15
+          }
+        },
+        {
+          "metres": 0,
+          "minutes": {
+            "min": 0,
+            "max": 0
+          }
+        },
+        {
+          "metres": 59203,
+          "minutes": {
+            "min": 85,
+            "max": 184
+          }
+        }
+      ],
+      [
+        {
+          "metres": 228705,
+          "minutes": {
+            "min": 233,
+            "max": 468
+          }
+        },
+        {
+          "metres": 22322,
+          "minutes": {
+            "min": 35,
+            "max": 77
+          }
+        },
+        {
+          "metres": 60236,
+          "minutes": {
+            "min": 85,
+            "max": 185
+          }
+        },
+        {
+          "metres": 58621,
+          "minutes": {
+            "min": 84,
+            "max": 182
+          }
+        },
+        {
+          "metres": 0,
+          "minutes": {
+            "min": 0,
+            "max": 0
+          }
+        }
+      ]
+    ]
+  },
+  "cachedMetricMs": 0.15745799999967858,
+  "worker": {
+    "loadMs": 1554.1227500000005,
+    "downloadBytes": 17135471,
+    "construction": {
+      "nodes": 140387,
+      "polylines": 178867,
+      "directedStates": 343870,
+      "transitions": 628338,
+      "geometryPoints": 864607,
+      "constructionMs": 1243.8098750000008,
+      "restrictions": {
+        "viaNodeRelations": 30,
+        "conservativelyBlockedRelations": 109,
+        "malformedRelationsExcluded": 8,
+        "forbiddenTransitions": 246,
+        "immediateReversalsBlocked": 330006
+      }
+    },
+    "observedHeapMiB": 771.7368087768555,
+    "separateThread": true,
+    "routeMs": 6.734458999999333,
+    "matrixMs": 7404.504457999999,
+    "cachedMatrixMs": 7.281875000000582,
+    "fixedRequests": [
+      "/app/data/bengal-driving.manifest.json",
+      "/app/data/bengal-driving-0.json",
+      "/app/data/bengal-driving-1.json",
+      "/app/data/bengal-driving-2.json",
+      "/app/data/bengal-driving-3.json",
+      "/app/data/bengal-driving-4.json",
+      "/app/data/bengal-driving-5.json",
+      "/app/data/bengal-driving-6.json",
+      "/app/data/bengal-driving-7.json"
+    ]
+  }
+}

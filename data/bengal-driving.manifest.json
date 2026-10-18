@@ -1,0 +1,297 @@
+{
+  "version": 1,
+  "mode": "motorcar",
+  "layout": "tables",
+  "sourceTimestamp": "2026-10-14T20:21:12Z",
+  "datasetSha256": "396b75c8d885ce8c18f6ac37250ccced710c90211ce031230d3024790cb72474",
+  "datasetBytes": 17131029,
+  "header": {
+    "version": 1,
+    "mode": "motorcar",
+    "geometryEncoding": "intermediate-delta-lat-lng-e6",
+    "bounds": {
+      "west": 86.8,
+      "south": 22.4,
+      "east": 88.55,
+      "north": 23.9
+    },
+    "coverage": {
+      "cities": [
+        {
+          "id": "kolkata",
+          "bounds": {
+            "south": 22.44,
+            "north": 22.65,
+            "west": 88.28,
+            "east": 88.49
+          }
+        },
+        {
+          "id": "asansol",
+          "bounds": {
+            "south": 23.58,
+            "north": 23.83,
+            "west": 86.81,
+            "east": 87.11
+          }
+        },
+        {
+          "id": "durgapur",
+          "bounds": {
+            "south": 23.43,
+            "north": 23.67,
+            "west": 87.2,
+            "east": 87.46
+          }
+        }
+      ],
+      "corridorHighways": [
+        "motorway",
+        "trunk",
+        "primary",
+        "secondary",
+        "motorway_link",
+        "trunk_link",
+        "primary_link",
+        "secondary_link"
+      ],
+      "maxSnapMetres": 120,
+      "localRoadsOutsideCities": false,
+      "boundaryConnectors": false
+    },
+    "source": {
+      "timestamp": "2026-10-14T20:21:12Z",
+      "pbfSha256": "b2443fab468183501a9072f4ffa46d6b9c5a4ceea2e54479a51d8aec43a755b1",
+      "pbfBytes": 247289715,
+      "pbfReplicationSequence": "1828",
+      "url": "https://download.geofabrik.de/asia/india/eastern-zone-261014.osm.pbf",
+      "fetchedAt": "2026-10-15T07:33:52.168Z",
+      "builtAt": "2026-10-17T21:27:11.298Z",
+      "osmiumVersion": "osmium version 1.19.1",
+      "xmlSha256": "d2ff0760754fc06434c1fbf0c3422985c9e68e2c6187d22ee38efa8939bc4e3a",
+      "xmlBytes": 76542096,
+      "selectedPbfSha256": "21fb8770764a824fae101828bc27376d97bc672836ee81d84a27ae682af9172f",
+      "selectedPbfBytes": 6606723,
+      "commands": [
+        [
+          "osmium",
+          "extract",
+          "--bbox",
+          "86.80,22.40,88.55,23.90",
+          "--strategy",
+          "smart",
+          "-S",
+          "types=restriction",
+          ".private/street-data/eastern-zone.osm.pbf",
+          "--output",
+          ".private/driving-data/bengal-complete.osm.pbf"
+        ],
+        [
+          "osmium",
+          "tags-filter",
+          ".private/driving-data/bengal-complete.osm.pbf",
+          "w/highway",
+          "r/type=restriction",
+          "--output",
+          ".private/driving-data/bengal-car-roads.osm.pbf"
+        ],
+        [
+          "osmium",
+          "check-refs",
+          "--check-relations",
+          ".private/driving-data/bengal-car-roads.osm.pbf"
+        ],
+        [
+          "osmium",
+          "tags-filter",
+          ".private/driving-data/bengal-car-roads.osm.pbf",
+          "w/highway=motorway,trunk,primary,secondary,motorway_link,trunk_link,primary_link,secondary_link",
+          "r/type=restriction",
+          "--output",
+          ".private/driving-data/bengal-backbone.osm.pbf",
+          "--no-progress"
+        ],
+        [
+          "osmium",
+          "extract",
+          "--bbox",
+          "88.28,22.44,88.49,22.65",
+          "--strategy",
+          "smart",
+          "-S",
+          "types=restriction",
+          ".private/driving-data/bengal-car-roads.osm.pbf",
+          "--output",
+          ".private/driving-data/bengal-kolkata.osm.pbf",
+          "--no-progress"
+        ],
+        [
+          "osmium",
+          "extract",
+          "--bbox",
+          "86.81,23.58,87.11,23.83",
+          "--strategy",
+          "smart",
+          "-S",
+          "types=restriction",
+          ".private/driving-data/bengal-car-roads.osm.pbf",
+          "--output",
+          ".private/driving-data/bengal-asansol.osm.pbf",
+          "--no-progress"
+        ],
+        [
+          "osmium",
+          "extract",
+          "--bbox",
+          "87.2,23.43,87.46,23.67",
+          "--strategy",
+          "smart",
+          "-S",
+          "types=restriction",
+          ".private/driving-data/bengal-car-roads.osm.pbf",
+          "--output",
+          ".private/driving-data/bengal-durgapur.osm.pbf",
+          "--no-progress"
+        ],
+        [
+          "osmium",
+          "merge",
+          ".private/driving-data/bengal-backbone.osm.pbf",
+          ".private/driving-data/bengal-kolkata.osm.pbf",
+          ".private/driving-data/bengal-asansol.osm.pbf",
+          ".private/driving-data/bengal-durgapur.osm.pbf",
+          "--output",
+          ".private/driving-data/bengal-selected.osm.pbf",
+          "--no-progress"
+        ],
+        [
+          "osmium",
+          "check-refs",
+          "--check-relations",
+          ".private/driving-data/bengal-selected.osm.pbf",
+          "--no-progress"
+        ],
+        [
+          "osmium",
+          "cat",
+          ".private/driving-data/bengal-selected.osm.pbf",
+          "--output-format",
+          "osm,add_metadata=false"
+        ]
+      ],
+      "referenceCheck": "osmium check-refs --check-relations: passed",
+      "provider": "OpenStreetMap",
+      "distributor": "Geofabrik",
+      "license": "ODbL-1.0",
+      "attribution": "OpenStreetMap contributors",
+      "attributionUrl": "https://www.openstreetmap.org/copyright",
+      "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "generator": "scripts/build-driving.mjs",
+      "filterVersion": 1
+    },
+    "exclusions": {
+      "nodeIds": [
+        1176978433,
+        9238004030,
+        7997891600,
+        5428488229,
+        5428488228,
+        9513755745
+      ],
+      "wayIds": [
+        1038941595
+      ],
+      "relationIds": [
+        7729480,
+        13422005,
+        13422006,
+        16135930,
+        16135931,
+        16135932,
+        17965120,
+        21185889
+      ]
+    },
+    "stats": {
+      "sourceNodes": 720933,
+      "sourceWays": 92492,
+      "sourceRelations": 152,
+      "carRelations": 152,
+      "ignoredRelations": 0,
+      "acceptedWays": 82405,
+      "rejectedWays": 9758,
+      "blockedSegments": 23281,
+      "rawSegments": 685740,
+      "directedArcs": 343870,
+      "geometryPoints": 864607,
+      "restrictionMembersComplete": true,
+      "intermediateCoordinatesPreserved": true
+    }
+  },
+  "files": [
+    {
+      "file": "bengal-driving-0.json",
+      "bytes": 4616501,
+      "sha256": "ec96810384d69cacabf8b6e5bf609ed32fd9e14bbd38e4e6631cf1af05483fc4",
+      "table": "nodes",
+      "offset": 0,
+      "count": 140387
+    },
+    {
+      "file": "bengal-driving-1.json",
+      "bytes": 43785,
+      "sha256": "fa4d5c53f960d39de05977e5d012fc8edb7cc414b2bccfa1524bb07d58f2bde2",
+      "table": "names",
+      "offset": 0,
+      "count": 2233
+    },
+    {
+      "file": "bengal-driving-2.json",
+      "bytes": 227,
+      "sha256": "02eae6d7df5f90a24cf5cca69eff443c19d9dbfb32e0dd7c4e45476fc5dae3bc",
+      "table": "highways",
+      "offset": 0,
+      "count": 14
+    },
+    {
+      "file": "bengal-driving-3.json",
+      "bytes": 2929244,
+      "sha256": "520cb2b0ddc775054ecc5aba91d3b57ed53ee9548c869a59f10764b953a9dc5f",
+      "table": "roads",
+      "offset": 0,
+      "count": 82405
+    },
+    {
+      "file": "bengal-driving-4.json",
+      "bytes": 8388328,
+      "sha256": "02241d8ed2f850597d20ce9bb9f3d6771b3ecebfa9aa734282daf7bf40b4d94a",
+      "table": "edges",
+      "offset": 0,
+      "count": 155543
+    },
+    {
+      "file": "bengal-driving-5.json",
+      "bytes": 1127758,
+      "sha256": "76deb8cf486cfa114e8990c85a6e6e73de140fd44e9e66ee9755a1081a4123ce",
+      "table": "edges",
+      "offset": 155543,
+      "count": 23324
+    },
+    {
+      "file": "bengal-driving-6.json",
+      "bytes": 367,
+      "sha256": "8c0b8d4417bc159c9a04e199b96f8ccb3ff29dc4b6f25b9341110f8d87cd08f7",
+      "table": "laneTags",
+      "offset": 0,
+      "count": 12
+    },
+    {
+      "file": "bengal-driving-7.json",
+      "bytes": 21074,
+      "sha256": "97355b32993f67ca74d80fc23d423aae97ed6dd672185f64dd023a9f7dcbe990",
+      "table": "restrictions",
+      "offset": 0,
+      "count": 139
+    }
+  ]
+}
