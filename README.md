@@ -53,7 +53,7 @@ Open the live app online, then **More > Add to Home Screen**. When the browser o
 - On iPhone/iPad, open the site in Safari, use **Share > Add to Home Screen**, then confirm **Add**.
 - On Android, use **Install app** when available, or the browser menu's **Install app / Add to Home screen** option. Availability varies by browser.
 - Accepting a prompt is not proof of installation. Fullscreen alone is not installed-app mode. The live installation checks simulated platform signals; no physical iOS/Android installation or installed-app launch was performed.
-- Location needs explicit browser permission and a foreground app. Home/GPS coordinates remain in memory, not saved plans or shared links. OS suspension can interrupt timing and guidance; background tracking is not promised.
+- Location needs explicit browser permission and a foreground app. QA kept **Remember this start on this device** off and Home/GPS coordinates session-only. The UI offers that separate opt-in for local start retention; it was not exercised by these checks. Private coordinates are excluded from shared links. OS suspension can interrupt timing and guidance; background tracking is not promised.
 
 ## Local Development
 
@@ -89,7 +89,7 @@ The main catalogue contains 50 source-backed candidate pandals, with 8 food stop
 
 Planning state and manual reports are local to the browser. They are not a shared crowd-reporting service. The office reads a public JSON snapshot and never requests geolocation, sends telemetry, or writes project status to a server. No account, API secret, or private workspace material is needed in the published artifact.
 
-Geolocation is an explicit foreground choice. Raw GPS coordinates stay in memory for local walking calculations and guidance; they are not saved in the plan, included in shared links or added to outbound directions URLs. External device-origin directions are delegated to the provider. Centering the map on a device location changes requested tile coordinates, so the tile provider can infer the viewed area and receives the IP address and ordinary network information. This is not a claim that no location-related information leaves the browser. GitHub Pages also receives ordinary hosting requests. There is no background auto-GPS, continuous tracking or unattended route monitoring. Third-party map tiles are **not** cached or prefetched by this project's service worker. Do not add bulk tile downloads or offline tile scraping.
+Geolocation is an explicit foreground choice. The live QA used synthetic coordinates and left **Remember this start on this device** off; raw Home/GPS coordinates were not persisted in those flows. The UI separately offers that option for local start retention; the optional saved-start flow was not verified by these checks. GPS trails and private coordinates are excluded from shared links. External device-origin directions are delegated to the provider. Centering the map on a device location changes requested tile coordinates, so the tile provider can infer the viewed area and receives the IP address and ordinary network information. This is not a claim that no location-related information leaves the browser. GitHub Pages also receives ordinary hosting requests. There is no background auto-GPS, continuous tracking or unattended route monitoring. Third-party map tiles are **not** cached or prefetched by this project's service worker. Do not add bulk tile downloads or offline tile scraping.
 
 ## Offline And Installation Limits
 
