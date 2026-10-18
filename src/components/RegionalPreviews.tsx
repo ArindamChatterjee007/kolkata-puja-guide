@@ -5,6 +5,15 @@ import { getRegionalPreviewEmbedUrl } from '../data/regionalCuration'
 import type { RegionalPostPreview } from '../data/regionalCuration'
 import { formatDate, t } from '../i18n'
 
+function publicationDate(language: Language, value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return formatDate(language, value)
+  const timestamp = Date.parse(value)
+  if (!Number.isFinite(timestamp)) return value
+  return new Intl.DateTimeFormat(language === 'bn' ? 'bn-IN' : 'en-IN', {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata',
+  }).format(timestamp)
+}
+
 export function RegionalPreviews({ language, previews }: { language: Language; previews: readonly RegionalPostPreview[] }) {
   const [loaded, setLoaded] = useState<{ id: string; url: string } | null>(null)
   if (previews.length === 0) return null
@@ -18,7 +27,7 @@ export function RegionalPreviews({ language, previews }: { language: Language; p
       return <li key={preview.id} className="regional-preview" data-preview-id={preview.id}>
         <strong className="regional-preview__label">{preview.sourceType === 'news' ? <FileText size={16} aria-hidden="true" /> : <Video size={16} aria-hidden="true" />}{label}</strong>
         <a href={preview.url} target="_blank" rel="noopener noreferrer" className="link-external"><ExternalLink size={14} aria-hidden="true" />{preview.title}</a>
-        <small>{preview.publisher}{preview.publishedAt && <> · {t(language, 'previewPublished')} <time dateTime={preview.publishedAt}>{formatDate(language, preview.publishedAt.slice(0, 10))}</time></>}</small>
+        <small>{preview.publisher}{preview.publishedAt && <> · {t(language, 'previewPublished')} <time dateTime={preview.publishedAt}>{publicationDate(language, preview.publishedAt)}</time></>}</small>
         <p>{language === 'en' ? preview.caption : t(language, preview.contentKind === 'theme-plan' ? 'previewPlanNote'
           : preview.contentKind === 'historical-article' || preview.contentKind === 'retrospective' ? 'previewHistoryNote'
             : preview.footageYear === null ? 'previewUnknownNote' : 'previewCaptureNote')}</p>

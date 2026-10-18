@@ -1179,7 +1179,17 @@ export default function App() {
         onInfo={() => setInfoOpen(true)}
       />
       <TripBar language={language} session={session} route={routeForTrip} canStart={canStart} onStart={startJourney}
-        onSettings={() => { setTab('route'); if (!wide) setMobileLayout('split'); panelBody.current?.scrollTo({ top: 0 }) }} />
+        onSettings={() => {
+          setTab('route')
+          if (!wide) setMobileLayout('list')
+          requestAnimationFrame(() => {
+            const panel = panelBody.current
+            const section = panel?.querySelector<HTMLElement>('[data-testid="trip-home"]')
+            if (!panel || !section) return
+            panel.scrollTo({ top: panel.scrollTop + section.getBoundingClientRect().top - panel.getBoundingClientRect().top })
+            section.querySelector<HTMLElement>('#trip-home-heading')?.focus({ preventScroll: true })
+          })
+        }} />
       {(wide || (tab !== 'directions' && tab !== 'drive')) && <AreaTabs language={language} area={session.settings.area} onChange={changeArea} />}
       <div className="workspace">
         <aside className="panel" id="planner" aria-label={t(language, 'tabRoute')}>

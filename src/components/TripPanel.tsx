@@ -164,7 +164,7 @@ export function TripPanel(props: TripPanelProps) {
     {session.needsHome && <p role="status" className="banner banner--warn">{t(language, 'reselectHome')}</p>}
     {session.storageError && <p role="status" className="hint hint--warn">{session.storageError}</p>}
     <section className="block trip-home" aria-label={t(language, 'startFrom')} data-testid="trip-home" data-home={session.home?.kind ?? 'none'}>
-      <h2 className="section-title" id="trip-home-heading">{homeKindLabel(language, session.home)}</h2>
+      <h2 className="section-title" id="trip-home-heading" tabIndex={-1}>{homeKindLabel(language, session.home)}</h2>
       {session.home
         ? <div className={`trip-home__current trip-home__current--${session.home.kind === 'coordinate' ? 'home' : 'start'}`}>
           {session.home.kind === 'coordinate' ? <Home size={20} aria-hidden="true" /> : <MapPin size={20} aria-hidden="true" />}
