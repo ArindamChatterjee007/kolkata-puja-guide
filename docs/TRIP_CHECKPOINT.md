@@ -1,10 +1,20 @@
 # Trip Checkpoint
 
+## Current Live Status: 18 October 2026
+
+The trip UI, regional catalogue, motorcar planner, Home controls, themes, chime controls and installation guidance are now published, with the limited live checks recorded in [LIVE_CHECKPOINT.md](LIVE_CHECKPOINT.md). The latest verified application artifact is `6563ad22ca33ba5c1d583096a4d0ff71021351d2`, deployed by successful Pages run `39123546575` at `2026-10-18T11:31:39.000Z`.
+
+Current user workflow: publish approved changes to `main` and Pages before live checks; `npm run build` is packaging only. No local suites, lint, type-only or local browser checks are run for this metadata update. Native-device acceptance and the other listed limits remain open.
+
+Everything below is the **earlier local handoff, retained as historical evidence**. Its pending deployment/full-E2E statements describe that earlier role, not today's live state. Failed or pending local runs are not reclassified as passes; no 155/171/full-app pass or combined local-plus-live total is asserted.
+
+## Historical Local Checkpoint
+
 Date: 2026-10-18. Local implementation and verification only. The requested GPT-6 Astra (Copilot) runtime is unverified; no fallback or subagents were used. No Git, publishing, account, Career_Search, or unrelated private-document action was taken.
 
-## Release Gate
+### Historical Release Gate
 
-**Ready for parent deployment: pending final complete E2E receipt.** This checkpoint is not a live release receipt. The current local app is http://127.0.0.1:5181/; port 5179 was not stopped or reused.
+> Earlier handoff: **Ready for parent deployment: pending final complete E2E receipt.** This checkpoint is not a live release receipt. The current local app is http://127.0.0.1:5181/; port 5179 was not stopped or reused.
 
 | Gate | Fresh result |
 | --- | --- |
