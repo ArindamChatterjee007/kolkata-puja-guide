@@ -2961,6 +2961,77 @@
   color: var(--ink);
 }
 
+.install {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.install__status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--emerald-soft);
+  color: var(--emerald-deep);
+  font-weight: 500;
+}
+
+.install__status svg {
+  flex: none;
+}
+
+.install__steps {
+  display: grid;
+  gap: 10px;
+  counter-reset: install-step;
+}
+
+.install__step {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  align-items: center;
+  counter-increment: install-step;
+  color: var(--ink);
+}
+
+.install__icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--ivory);
+  color: var(--ink);
+}
+
+.install__icon::after {
+  content: counter(install-step);
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--vermilion);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.install__notes {
+  display: grid;
+  gap: 6px;
+  padding-left: 18px;
+  list-style: disc;
+  color: var(--muted);
+}
+
 /* ---------- Toasts ---------- */
 .toasts {
   position: fixed;

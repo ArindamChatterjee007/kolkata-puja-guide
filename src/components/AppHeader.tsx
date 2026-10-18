@@ -1,9 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { Ellipsis, ExternalLink, Flame, Info, Share2, SquareKanban, Wifi, WifiOff } from 'lucide-react'
+import { CircleCheck, Download, Ellipsis, ExternalLink, Flame, Info, Share2, Smartphone, SquareKanban, Wifi, WifiOff } from 'lucide-react'
 import type { Language } from '../types'
 import { t } from '../i18n'
+import { useInstallPrompt } from '../hooks/useInstallPrompt'
 import { useMediaQuery } from '../hooks/useMediaQuery'
+import { InstallAppDialog } from './InstallAppDialog'
 import { ThemeControl } from './ThemeControl'
 
 interface AppHeaderProps {
@@ -25,6 +27,8 @@ function menuItems(menu: HTMLElement | null): HTMLElement[] {
 export function AppHeader({ language, online, onLanguage, onShare, onInfo }: AppHeaderProps) {
   const wide = useMediaQuery('(min-width: 760px)')
   const aboutInline = useMediaQuery('(min-width: 360px)')
+  const install = useInstallPrompt()
+  const [installOpen, setInstallOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [initialFocus, setInitialFocus] = useState<'first' | 'last'>('first')
   const menuId = useId()
@@ -86,6 +90,8 @@ export function AppHeader({ language, online, onLanguage, onShare, onInfo }: App
 
   const aboutLabel = t(language, 'about')
   const aboutIcon = <Info size={20} aria-hidden="true" />
+  const installLabel = t(language, install.status === 'installed' ? 'installMenuDone' : install.status === 'ready' ? 'installMenuReady' : 'installMenu')
+  const InstallIcon = install.status === 'installed' ? CircleCheck : install.status === 'ready' ? Download : Smartphone
 
   return (
     <header className="header">
@@ -150,6 +156,19 @@ export function AppHeader({ language, online, onLanguage, onShare, onInfo }: App
                   <div className="header-menu__separator" role="separator" />
                 </>
               )}
+              <button
+                type="button"
+                role="menuitem"
+                className="header-menu__item"
+                data-install-status={install.status}
+                onClick={() => {
+                  closeMenu(true)
+                  setInstallOpen(true)
+                }}
+              >
+                <InstallIcon size={18} aria-hidden="true" />
+                <span>{installLabel}</span>
+              </button>
               {!aboutInline && (
                 <button
                   type="button"
@@ -184,6 +203,7 @@ export function AppHeader({ language, online, onLanguage, onShare, onInfo }: App
           )}
         </div>
       </div>
+      <InstallAppDialog language={language} open={installOpen} onClose={() => setInstallOpen(false)} />
     </header>
   )
 }
