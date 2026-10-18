@@ -25,7 +25,7 @@ export type InstallOutcome = 'accepted' | 'dismissed' | 'unavailable'
 
 type Phase = 'idle' | 'installing' | 'accepted' | 'dismissed' | 'installed'
 
-const APP_DISPLAY_MODES = ['standalone', 'fullscreen', 'minimal-ui'] as const
+const APP_DISPLAY_MODES = ['standalone'] as const
 const SERVER_SNAPSHOT: InstallPromptState = { status: 'manual', platform: 'desktop', iosSafari: false, inAppBrowser: false }
 
 export function detectInstallPlatform(userAgent: string, maxTouchPoints: number): InstallPlatformInfo {
