@@ -288,7 +288,9 @@ export function createDrivingWorkerController(baseUrl: URL) {
 }
 
 if (typeof self !== 'undefined' && typeof document === 'undefined') {
-  const baseUrl = new URL(import.meta.env.BASE_URL, self.location.origin)
+  const baseUrl = import.meta.env.DEV
+    ? new URL(import.meta.env.BASE_URL, self.location.origin)
+    : new URL('../', import.meta.url)
   const controller = createDrivingWorkerController(baseUrl)
   self.addEventListener('message', (event: MessageEvent<unknown>) => {
     void controller.dispatch(event.data, (progress) => self.postMessage(progress)).then((response) => self.postMessage(response))
