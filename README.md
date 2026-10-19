@@ -57,7 +57,7 @@ Open the live app online, then **More > Add to Home Screen**. When the browser o
 
 ## Trip Albums
 
-The [Trip albums entry](https://arindamchatterjee007.github.io/kolkata-puja-guide/photos.html) is deployed. Live checks verified two-person sharing, unchanged original downloads, private access and desktop/Bengali phone layouts on the initial artifact. A subsequently published album-counter refresh has passed packaging and signed-out live checks, but its post-upload regression remains unverified because the user retained the three-identity QA cap. The [photo release record](docs/PHOTOS_RELEASE.md) keeps these scopes separate; this is not an unrestricted frontend acceptance claim.
+The [Trip albums entry](https://arindamchatterjee007.github.io/kolkata-puja-guide/photos.html) is deployed. The final published static UI passed 47/47 live fixture cases with fully mocked APIs, including authoritative counter refresh, viewer keyboard focus through original/download/retry flows, and responsive touch targets. Zero real backend writes or new identities occurred. Initial real two-person sharing and byte-integrity checks remain separate historical evidence. The three-identity QA cap is retained; a fresh real-backend upload regression and physical-device acceptance remain unverified. The [photo release record](docs/PHOTOS_RELEASE.md) keeps these scopes separate.
 
 Open **More > Trip albums**, create an album with a display name, and share its invite link privately. Invite holders join with a name and receive a separate contributor folder, even when names match. Album members can view each other's folders and download unchanged originals; previews are separate smaller images.
 

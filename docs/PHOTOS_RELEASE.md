@@ -2,18 +2,19 @@
 
 ## Status
 
-19 October 2026: deployed with a verification limit. The initial frontend's
-two-person sharing flow and focused desktop/phone layouts were exercised live.
-A counter-refresh fix is now published, but its post-upload regression was not
-rerun: the user explicitly retained the three-identity QA cap instead of
-approving an additional temporary identity. Do not call the final artifact
-fully accepted on the strength of the earlier artifact's results.
+19 October 2026: the final published static frontend passed **47/47 live
+fixture cases with fully mocked APIs**. Counter transitions, original-view and
+download keyboard focus, retry/cancellation, and responsive touch targets passed.
+The initial frontend's real two-person sharing and byte-integrity results remain
+separate historical evidence. The three-identity QA cap is retained; no fresh
+real-backend upload regression or physical-device acceptance is claimed.
 
-The dedicated Free Mumbai backend remains deployed with uploads enabled. Its
+The dedicated Free Mumbai backend was already deployed with uploads enabled.
+This release made no backend changes or new server-health verification. Its
 separate 53-check live receipt ended at `2026-10-18T23:01:08.211Z`; those checks
 are historical backend evidence, not frontend passes or a rerun.
 
-Both application versions were published to main and Pages before their live
+Each application version was published to main and Pages before its live
 checks. Only the normal packaging build ran locally. No local tests, lint,
 preview server, fallback model or subagents were used. The requested GPT-6 Astra
 (Copilot) runtime is not independently verified.
@@ -22,12 +23,20 @@ Public entry: https://arindamchatterjee007.github.io/kolkata-puja-guide/photos.h
 
 ## Deployment Receipts
 
-Final application source: `75c10b660dad525bb694af8e859f04faadf6b9b9`.
-Pages artifact: `1c73cc7260972bc9f8a3c5c2d6f17b897dee937d`.
+Final application source: `8bd3980939126165df3926a4f9e04b6149831731`.
+Pages artifact: `eddf023a2af5ecb8516b0c544cf36f87550a5b42`.
+[Pages run 39220496533](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/39220496533)
+succeeded; its deploy job completed at `2026-10-19T08:07:40Z`.
+Final static-UI fixture checks ran from `2026-10-19T08:12:18.850Z` through
+`2026-10-19T08:12:35.227Z`. The executed photo bundle's SHA-256 was
+`d7b2fac3ffb3ad635618f1595a66e25f488b790bd009bd0ae09719ff4efb62ce`.
+The subsequent documentation-only commit does not change this static artifact.
+
+Previous counter-fix source: `75c10b660dad525bb694af8e859f04faadf6b9b9`.
+Previous artifact: `1c73cc7260972bc9f8a3c5c2d6f17b897dee937d`.
 [Pages run 39214512046](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/39214512046)
 succeeded; its deploy job completed at `2026-10-19T07:13:01Z`.
-Final signed-out live checks ended at `2026-10-19T07:14:05.470Z`.
-The later documentation-only commit does not change this static artifact.
+That artifact's signed-out live checks ended at `2026-10-19T07:14:05.470Z`.
 
 Initial source: `12557ce46b941428077b91aeb6ba7e8d36568d29`.
 Initial artifact: `ef6c2d967efe4d48689750a6d5040158e962b7a8`.
@@ -77,7 +86,7 @@ storage and Authorization headers, not URLs, analytics or release evidence.
 
 ## Publication Review
 
-The allowlist includes the photo entry/client, public backend configuration,
+The initial publication allowlist included the photo entry/client, public backend configuration,
 header/i18n wiring, package manifest/lock, Vite inputs, ignore rules, these docs,
 and reviewed Supabase configuration, migrations, Edge function and guarded
 synthetic acceptance source. The existing project is not recreated and its
@@ -91,7 +100,42 @@ image parsers declare MIT. Credential files, CLI state, protected untracked
 workflow/assets, user data, QA output and screenshots are excluded. Pages ships
 only the generated static artifact, with no backend SQL or Edge source.
 
-## Live Acceptance
+This fix committed only `src/photos/Lightbox.tsx` and `src/photos.css` before
+publication. The follow-up documentation commit updates only this record and
+the README. The existing public office board is not updated. The artifact has
+129 allowlisted generated/public files plus `.nojekyll`; only the two obsolete
+tracked hashed photo assets were removed.
+
+## Final Static UI With Mocked API
+
+The existing fixture harness retained all 47 cases, strengthening the original
+viewer checks to exercise held responses and focus before button disabling.
+Its earlier 46/47 result exposed the focus defect; the new run passed 47/47.
+These counts are not added to the earlier backend or real two-person results.
+
+Chrome 155 loaded the actual public Pages app. All Auth, album, upload, download
+and delete API requests were fulfilled or aborted in process. Host resolver
+rules were `MAP * ~NOTFOUND, EXCLUDE arindamchatterjee007.github.io`; unmocked
+provider and unrelated-host probes failed with `ERR_NAME_NOT_RESOLVED` before
+fixture account flows ran. Dummy sessions existed only in isolated contexts.
+
+| Scope | Result | Evidence |
+| --- | --- | --- |
+| Published resources | PASS | Seven HTML/JS/CSS resources matched artifact hashes and MIME types. Both browser contexts executed the exact final photo bundle without a service worker. |
+| Authoritative counter refresh | PASS, mocked API | Album summary and folder card followed 0 -> 1 -> 2 -> 1 -> 0 after fixture upload/deletion receipts and detail GETs, without reload. The held PUT produced no optimistic count. |
+| Original-view keyboard focus | PASS | Focus reached the dialog before the action disabled. It stayed there during the held response and after the button unmounted; ArrowRight changed both filename and counter. |
+| Download-first keyboard focus | PASS | Held HEIC-shaped fixture download retained dialog focus before/during/after transfer; exact synthetic bytes and filename matched, and ArrowLeft returned to the first photo. This is not a real HEIC decode or native download UX test. |
+| Error, retry and dismissal | PASS | Injected original 503 and retry retained modal focus. Escape restored the grid trigger and folder route. Closing a held original request aborted it without late reopening. |
+| Layout and touch targets | PASS | Brand height was 44 px at 390/1440 and 46.375 px at 320, with a 44 px minimum. English/day and Bengali/night views had no horizontal overflow or covered controls. Four screenshots captured; desktop album and 320 px viewer reviewed. |
+| Interception boundary | PASS | All 42 provider-origin requests handled in process; 39 responses had no remote server address and three requests were intentionally aborted. Zero real provider responses, backend writes or new real identities; two synthetic sessions only. |
+| Upload bytes and runtime | PASS, intercepted only | Three completed PUT bodies and three preview bodies matched client SHA-256 declarations; previews stayed below 200,000 bytes. Zero page errors or unexpected console errors; the failed PUT and injected 503 were expected. |
+
+The two remaining data-free real QA identities and all persistent users/photos
+were untouched. No signup, create/join, admin cleanup, migration, backend setting
+change or server deployment reached the real provider. No new server counter
+verification or complete final server acceptance is claimed.
+
+## Historical Live Acceptance
 
 | Scope | Result | Evidence |
 | --- | --- | --- |
@@ -104,8 +148,8 @@ only the generated static artifact, with no backend SQL or Edge source.
 | Private access and transport | PASS, initial checks | Signed-out outsider UI/API access was denied. Invite capabilities did not appear in request URLs/referrers; original responses had attachment/UTF-8 filename and no-store headers. |
 | Service-worker boundary | PASS | One cache held 127 public entries and zero private API, Auth, Storage or original entries. |
 | Desktop and phone layout | PASS after QA-selector correction | 1440 px desktop and 390/320 px Bengali/dark layouts fit without horizontal overflow or covered control centers. Three screenshots were reviewed. Viewer pixels, arrows, Escape and own-delete control passed. |
-| Album summary after upload | FAIL observed, fix published, regression UNVERIFIED | A screenshot showed two folder photos but a stale zero-photo album summary. The final source reloads authoritative album detail after upload and deletion. No additional identity/upload was authorized to retest it. |
-| Final signed-out artifact checks | PASS | Nine HTML/JS/CSS files matched final artifact hashes and MIME types; page, create-dialog fields and planner link worked at 390 px with zero Auth requests and page errors. Live health was ready with uploads enabled. |
+| Album summary after upload | FAIL observed; later fixture regression PASS | A screenshot showed two folder photos but a stale zero-photo album summary. The counter fix reloads authoritative album detail after upload and deletion. The final static UI now passes the mocked-API regression above; a new real-backend upload regression remains unverified. |
+| Previous counter artifact's signed-out checks | PASS, historical | Nine HTML/JS/CSS files matched that artifact's hashes and MIME types; page, create-dialog fields and planner link worked at 390 px with zero Auth requests and page errors. Health was ready with uploads enabled at that earlier check. |
 
 The main trace retains 49 passing assertions and three failed records: one
 incorrect button-role selector, followed later by a cleanup-denial assertion
@@ -123,7 +167,7 @@ The three cross-member download checks used these synthetic sizes:
 
 No real user photos, workspace photo files, other albums, or provider datasets
 were used. The additional layout pass used two small generated JPEGs and the
-third, final authorized anonymous identity. No invite, member JWT, cookie,
+third anonymous identity within the retained QA cap. No invite, member JWT, cookie,
 private object URL, service key or user-data identifier is in this record.
 
 ## Cleanup And Limits
@@ -150,11 +194,16 @@ network transfer, not an uncertain in-flight lease. The production backend was
 not disabled to test unconfigured/read-only states, quotas were not exhausted,
 and member revocation/invite rotation were not exercised through this UI.
 
-The final counter refresh passed the authorized packaging build and public
-signed-out checks only. Full post-upload acceptance remains limited by the
-explicit three-identity cap. No extra identity, paid upgrade, migration replay
-or backend redeployment was performed.
+The final counter and focus regressions passed against the published static
+app with fully intercepted APIs. A fresh real-backend upload regression and
+physical-device acceptance remain unverified; the three-identity QA cap is
+retained. The two remaining data-free identities were not cleaned up. No extra
+real identity, paid upgrade, migration replay or backend redeployment occurred.
+At 320 px a long filename can still wrap inside its extension; this cosmetic
+limitation was observed and is outside the two-file fix.
 
 The existing office board and its older application receipts are unchanged;
 they do not certify this feature. Local redacted evidence remains in the ignored
-`test-results/live-photos-release/` directory, not in either published branch.
+`test-results/live-photos-release/` and `test-results/live-photos-focus-release/`
+directories, not in either published branch. The previous 46/47 fixture receipt
+is retained separately in `test-results/live-photos-ui-final/report.json`.
