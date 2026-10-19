@@ -8,10 +8,10 @@ const maximumOriginalBytes = 40_000_000
 const maximumPreviewBytes = 200_000
 const fallbackLimits = {
   fileBytes: maximumOriginalBytes, previewBytes: maximumPreviewBytes,
-  projectBytes: 900_000_000, albumBytes: 500_000_000, photosPerAlbum: 50,
+  projectBytes: 900_000_000, albumBytes: 800_000_000, photosPerAlbum: 500,
   albumsPerProject: 20, membersPerAlbum: 250, monthlyDownloadBudget: 4_000_000_000,
   downloadChargeMultiplier: 2, previewMaxDimension: 1600, simultaneousBinaryUploads: 1,
-  maxBytes: 500_000_000, maxPhotos: 50, maxFileBytes: maximumOriginalBytes,
+  maxBytes: 800_000_000, maxPhotos: 500, maxFileBytes: maximumOriginalBytes,
 }
 const acceptedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/avif'])
 const allowedHeaders = ['authorization', 'apikey', 'content-type', 'x-client-info', 'x-client-request-id', 'x-content-sha256']

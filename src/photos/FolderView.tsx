@@ -9,7 +9,7 @@ import { Breadcrumb, DetailFailure } from './AlbumView'
 import { tp } from './i18n'
 import { Lightbox } from './Lightbox'
 import type { DetailState } from './PhotosApp'
-import { usePreviewUrl } from './previews'
+import { useInView, usePreviewUrl } from './previews'
 import type { PhotoServices } from './services'
 import { ACCEPT_ATTRIBUTE, MAX_FILE_MB, folderLabels, formatBytes, formatNumber } from './text'
 import { UploadQueue, defaultConcurrency, isActiveUpload } from './uploads'
@@ -333,16 +333,18 @@ export function FolderView({ language, services, albumId, memberId, state, reloa
 }
 
 function PhotoTile({ language, services, photo, onOpen }: { language: Language; services: PhotoServices; photo: Photo; onOpen: () => void }) {
-  const preview = usePreviewUrl(services.previews, photo.id, photo.hasPreview)
+  // The preview downloads only while the tile is near the viewport; the object URL itself needs no lazy <img>.
+  const [tileRef, inView] = useInView()
+  const preview = usePreviewUrl(services.previews, photo.id, photo.hasPreview, inView)
   const type = photo.contentType.replace('image/', '').toUpperCase()
   return (
-    <button type="button" className="photo-tile" onClick={onOpen} aria-label={tp(language, 'openPhoto', { name: photo.filename })} title={photo.filename}>
+    <button ref={tileRef} type="button" className="photo-tile" data-preview={preview.status} onClick={onOpen} aria-label={tp(language, 'openPhoto', { name: photo.filename })} title={photo.filename}>
       {preview.status === 'ready' ? (
-        <img className="photo-tile__img" src={preview.url} alt="" loading="lazy" decoding="async" />
+        <img className="photo-tile__img" src={preview.url} alt="" decoding="async" />
       ) : (
         <span className={`photo-tile__blank${preview.status === 'loading' ? ' is-loading' : ''}`} aria-hidden="true">
           <FileImage size={26} />
-          {preview.status !== 'loading' && <span className="photo-tile__type">{type}</span>}
+          {(preview.status === 'none' || preview.status === 'error') && <span className="photo-tile__type">{type}</span>}
         </span>
       )}
       <span className="photo-tile__caption">

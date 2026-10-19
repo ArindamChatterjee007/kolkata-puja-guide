@@ -6,7 +6,7 @@ import type { AlbumDetail, ApiError, Member, Photo } from './api'
 import type { AuthSnapshot } from './auth'
 import { tp } from './i18n'
 import type { DetailState } from './PhotosApp'
-import { usePreviewUrl } from './previews'
+import { useInView, usePreviewUrl } from './previews'
 import { ALBUMS_HASH } from './route'
 import type { PhotoServices } from './services'
 import { folderLabels, formatBytes, formatNumber, initials } from './text'
@@ -223,6 +223,7 @@ interface FolderCardProps {
 }
 
 function FolderCard({ language, services, albumId, member, label, isSelf, photos }: FolderCardProps) {
+  const [cardRef, inView] = useInView()
   const sheet = useMemo(() => {
     const own = photos.filter((photo) => photo.memberId === member.id)
     const withPreview = own.filter((photo) => photo.hasPreview).sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
@@ -230,11 +231,11 @@ function FolderCard({ language, services, albumId, member, label, isSelf, photos
   }, [photos, member])
 
   return (
-    <a className={`folder-card${isSelf ? ' folder-card--self' : ''}`} href={`#/a/${albumId}/f/${member.id}`} aria-label={`${tp(language, 'folderOf', { name: label })} · ${tp(language, 'photosCount', { n: formatNumber(language, sheet.count) })}`}>
+    <a ref={cardRef} className={`folder-card${isSelf ? ' folder-card--self' : ''}`} href={`#/a/${albumId}/f/${member.id}`} aria-label={`${tp(language, 'folderOf', { name: label })} · ${tp(language, 'photosCount', { n: formatNumber(language, sheet.count) })}`}>
       <span className="sheet" aria-hidden="true">
         {[0, 1, 2, 3].map((index) => {
           const photo = sheet.tiles[index]
-          return photo ? <SheetTile key={photo.id} services={services} photo={photo} /> : <span key={`blank-${index}`} className="sheet__tile sheet__tile--blank">{index === 0 && sheet.tiles.length === 0 ? initials(member.displayName) : ''}</span>
+          return photo ? <SheetTile key={photo.id} services={services} photo={photo} enabled={inView} /> : <span key={`blank-${index}`} className="sheet__tile sheet__tile--blank">{index === 0 && sheet.tiles.length === 0 ? initials(member.displayName) : ''}</span>
         })}
       </span>
       <span className="folder-card__body">
@@ -253,8 +254,8 @@ function FolderCard({ language, services, albumId, member, label, isSelf, photos
   )
 }
 
-function SheetTile({ services, photo }: { services: PhotoServices; photo: Photo }) {
-  const preview = usePreviewUrl(services.previews, photo.id, photo.hasPreview)
+function SheetTile({ services, photo, enabled }: { services: PhotoServices; photo: Photo; enabled: boolean }) {
+  const preview = usePreviewUrl(services.previews, photo.id, photo.hasPreview, enabled)
   if (preview.status === 'ready') return <img className="sheet__tile" src={preview.url} alt="" decoding="async" />
   return <span className={`sheet__tile sheet__tile--blank${preview.status === 'loading' ? ' is-loading' : ''}`} />
 }

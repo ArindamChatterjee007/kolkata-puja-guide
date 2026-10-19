@@ -63,7 +63,7 @@ Open **More > Trip albums**, create an album with a display name, and share its 
 
 Names are not verified identities. Anyone holding an invite can join. Membership belongs to an anonymous browser session and cannot be recovered by retyping a name after clearing storage. Original EXIF, including possible location data, is retained and available to album members. Originals are stored only in private Supabase Storage, never in Git or public Pages assets.
 
-Limits are 40 MB per file, 500 MB and 50 photos per album, 900 MB project storage, and a finite 4 GB charged download allowance with shared Free-plan quota headroom. Download requests are charged twice their byte size; interrupted downloads still count. Free projects can pause after a week of inactivity. This is not unlimited hosting. See the [backend contract](docs/PHOTO_BACKEND.md) for format, quota, access and deletion details.
+Limits are 40 MB per file, 800 MB of reserved storage and 500 photo records per album, 900 MB of shared project storage within the existing Free 1 GB allowance, and a finite 4 GB charged download allowance. Each photo reserves an additional 200 KB for its preview even when none is uploaded, so 500 records leave at most 700 MB for originals within an album; other albums can further constrain available project space. Download requests are charged twice their byte size; interrupted downloads still count. Free projects can pause after a week of inactivity. This is not unlimited hosting or additional provider space. The [live capacity change](docs/FREE_STORAGE_CHANGE.md) verified limits and access-gate metadata, not a 500-photo upload. See the [backend contract](docs/PHOTO_BACKEND.md) for format, quota, access and deletion details.
 
 ## Local Development
 

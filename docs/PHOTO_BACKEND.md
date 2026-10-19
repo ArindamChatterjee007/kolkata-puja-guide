@@ -102,7 +102,7 @@ new joins. Removed members' photos remain for creator cleanup.
 `reserved`, `uploading`, `ready`, `cleanupRequired`. Preview state is independent;
 a failed preview need not hide a sound original. `pendingUploads` contains only
 the caller's unfinished or cleanup-needed records. Album responses are bounded
-by the 50-photo and 250-member caps; there is no unbounded photo listing.
+by the 500-photo and 250-member caps; there is no unbounded photo listing.
 
 Names are NFC-normalized, stripped of controls/bidi overrides, whitespace
 collapsed, and limited to 40 Unicode code points. Titles allow 80. Original
@@ -122,7 +122,7 @@ originals are `application/octet-stream` with `nosniff` and attachment headers.
   thumbnail is uploaded. The original is never resized, recompressed, or stripped
   of EXIF. A thumbnail is a separate derived object, never the original.
 - Project: 900,000,000 reserved bytes and 20 albums, including deleting albums.
-- Album: 500,000,000 reserved bytes, 50 photo records including reservations,
+- Album: 800,000,000 reserved bytes, 500 photo records including reservations,
   and 250 membership records including removed members.
 - Downloads: 4,000,000,000 charged bytes per UTC calendar month. An additional
   window including today and the previous 31 UTC dates prevents a provider-cycle
@@ -130,6 +130,16 @@ originals are `application/octet-stream` with `nosniff` and attachment headers.
   twice its full byte size before streaming. Failed/interrupted requests remain
   charged; deletes do not refund bandwidth. Metadata/auth/provider overhead uses
   the remaining headroom. This is finite download capacity, not unlimited hosting.
+
+The [October 19 capacity change](FREE_STORAGE_CHANGE.md) raises only the
+application-imposed album caps. All albums still share the 900 MB reservation
+cap within the existing Free 1 GB provider storage allowance. At 500 records,
+the mandatory preview reservations total 100 MB, leaving at most 700 MB for
+originals in that album, even when no previews are uploaded. Other albums can
+reduce the remaining project capacity. Live checks verified quota/security
+metadata and unauthenticated gates only, not a 500-photo upload. Album metadata
+still returns all admitted photo records without truncating folder counts;
+frontend pagination and lazy thumbnails remain separate frontend work.
 
 Database advisory locks serialize quota checks and membership mutations. Only
 one original/preview binary upload is admitted project-wide at a time. Limits
