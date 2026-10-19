@@ -124,10 +124,10 @@ export function AppHeader({ language, online, onLanguage, onShare, onInfo }: App
           {online ? <Wifi size={16} aria-hidden="true" /> : <WifiOff size={16} aria-hidden="true" />}
           <span className="status-pill__text">{online ? t(language, 'online') : t(language, 'offline')}</span>
         </span>
-        <button type="button" className="btn btn--quiet header__btn" onClick={onShare} title={t(language, 'share')} aria-label={t(language, 'share')}>
-          <Share2 size={18} aria-hidden="true" />
-          <span className="header__btn-text">{t(language, 'share')}</span>
-        </button>
+        <a className="btn btn--quiet header__btn" href={TRIP_ALBUMS_URL} title={t(language, 'tripAlbums')} aria-label={t(language, 'tripAlbums')}>
+          <Images size={18} aria-hidden="true" />
+          <span className="header__btn-text">{t(language, 'tripAlbums')}</span>
+        </a>
         {aboutInline && (
           <button type="button" className="icon-btn" onClick={onInfo} title={aboutLabel} aria-label={aboutLabel}>
             {aboutIcon}
@@ -157,6 +157,10 @@ export function AppHeader({ language, online, onLanguage, onShare, onInfo }: App
                   <div className="header-menu__separator" role="separator" />
                 </>
               )}
+              <button type="button" role="menuitem" className="header-menu__item" onClick={() => { closeMenu(true); onShare() }}>
+                <Share2 size={18} aria-hidden="true" />
+                <span>{t(language, 'share')}</span>
+              </button>
               <button
                 type="button"
                 role="menuitem"

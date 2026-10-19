@@ -34,6 +34,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 .office-header nav { display: flex; align-items: center; gap: 28px; }
 .publication-state { font-size: 13px; color: #923035; }
 .planner-link { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; font-size: 14px; font-weight: 500; }
+.albums-link { padding-inline: 12px; border: 1px solid var(--office-rule); border-radius: 6px; background: #fbeff0; color: #a1282b; }
 .office-main { max-width: 1560px; margin: 0 auto; padding: 32px; }
 .register-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding-bottom: 24px; }
 .eyebrow { color: var(--office-red); font-size: 13px; margin-bottom: 8px; font-weight: 500; }
@@ -130,8 +131,8 @@ h2 { font-size: 18px; font-weight: 600; line-height: 1.35; }
 }
 
 @media (max-width: 640px) {
-  .office-header { padding: 14px 16px; gap: 12px; }
-  .office-header nav { gap: 10px; }
+  .office-header { padding: 14px 16px; gap: 12px; flex-wrap: wrap; }
+  .office-header nav { gap: 10px; flex: 1 1 100%; justify-content: space-between; }
   .publication-state { display: none; }
   .office-main { padding: 24px 16px; }
   .register-heading { align-items: flex-start; flex-direction: column; gap: 14px; }
