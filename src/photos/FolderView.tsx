@@ -90,7 +90,10 @@ export function FolderView({ language, services, albumId, memberId, state, reloa
       concurrency: defaultConcurrency(),
       existingShas: () => shasRef.current,
       onChange: setItems,
-      onPhotoReady: (photo) => update((current) => addPhoto(current, photo)),
+      onPhotoReady: (photo) => {
+        update((current) => addPhoto(current, photo))
+        reload()
+      },
     })
     queueRef.current = queue
     setItems([])
@@ -99,7 +102,7 @@ export function FolderView({ language, services, albumId, memberId, state, reloa
       queueRef.current = null
       setItems([])
     }
-  }, [services, albumId, memberId, isOwn, uploadsEnabled, update])
+  }, [services, albumId, memberId, isOwn, uploadsEnabled, update, reload])
 
   useEffect(() => {
     queueRef.current?.setOnline(online)
@@ -139,6 +142,7 @@ export function FolderView({ language, services, albumId, memberId, state, reloa
     await services.api.deletePhoto(photo.id)
     services.previews.forget(photo.id)
     update((current) => removePhoto(current, photo))
+    reload()
     setLightbox((current) => {
       if (current === null) return null
       const remaining = photos.length - 1
