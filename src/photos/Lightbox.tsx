@@ -81,6 +81,7 @@ export function Lightbox({ language, services, photos, index, ownerLabel, canDel
 
   const fetchOriginal = async (purpose: 'view' | 'download') => {
     if (!photo) return
+    dialogRef.current?.focus({ preventScroll: true })
     const current = originalRef.current
     if (current.status === 'ready') {
       if (purpose === 'download') {
@@ -148,6 +149,7 @@ export function Lightbox({ language, services, photos, index, ownerLabel, canDel
     <dialog
       ref={dialogRef}
       className="lightbox"
+      tabIndex={-1}
       aria-label={photo ? tp(language, 'openPhoto', { name: photo.filename }) : undefined}
       onCancel={(event) => {
         event.preventDefault()
