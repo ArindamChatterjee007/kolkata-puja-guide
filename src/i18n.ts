@@ -70,6 +70,7 @@ const strings = {
   menuMore: ['More options', 'আরও বিকল্প'],
   workBoard: ['Work board', 'কাজের বোর্ড'],
   tripAlbums: ['Trip albums', 'ভ্রমণের অ্যালবাম'],
+  albumsShort: ['Albums', 'অ্যালবাম'],
   opensNewTab: ['Opens in a new tab', 'নতুন ট্যাবে খোলে'],
   installMenu: ['Add to Home Screen', 'হোম স্ক্রিনে যোগ করুন'],
   installMenuReady: ['Install app', 'অ্যাপ ইনস্টল করুন'],
