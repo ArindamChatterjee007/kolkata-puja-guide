@@ -2,17 +2,39 @@
 
 ## Status
 
-19 October 2026: frontend publication and live acceptance are pending. The
-dedicated Free Mumbai backend is already deployed and uploads are enabled.
-Its separate 53-check live receipt ended at `2026-10-18T23:01:08.211Z`; those
-checks are historical backend evidence, not frontend passes or a rerun.
+19 October 2026: deployed with a verification limit. The initial frontend's
+two-person sharing flow and focused desktop/phone layouts were exercised live.
+A counter-refresh fix is now published, but its post-upload regression was not
+rerun: the user explicitly retained the three-identity QA cap instead of
+approving an additional temporary identity. Do not call the final artifact
+fully accepted on the strength of the earlier artifact's results.
 
-Publish the approved source and packaged Pages artifact before checking the
-frontend. Only the normal packaging build is allowed locally. No local tests,
-lint, preview server, fallback model or subagents are used. The requested
-GPT-6 Astra (Copilot) runtime is not independently verified.
+The dedicated Free Mumbai backend remains deployed with uploads enabled. Its
+separate 53-check live receipt ended at `2026-10-18T23:01:08.211Z`; those checks
+are historical backend evidence, not frontend passes or a rerun.
+
+Both application versions were published to main and Pages before their live
+checks. Only the normal packaging build ran locally. No local tests, lint,
+preview server, fallback model or subagents were used. The requested GPT-6 Astra
+(Copilot) runtime is not independently verified.
 
 Public entry: https://arindamchatterjee007.github.io/kolkata-puja-guide/photos.html
+
+## Deployment Receipts
+
+Final application source: `75c10b660dad525bb694af8e859f04faadf6b9b9`.
+Pages artifact: `1c73cc7260972bc9f8a3c5c2d6f17b897dee937d`.
+[Pages run 39214512046](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/39214512046)
+succeeded; its deploy job completed at `2026-10-19T07:13:01Z`.
+Final signed-out live checks ended at `2026-10-19T07:14:05.470Z`.
+The later documentation-only commit does not change this static artifact.
+
+Initial source: `12557ce46b941428077b91aeb6ba7e8d36568d29`.
+Initial artifact: `ef6c2d967efe4d48689750a6d5040158e962b7a8`.
+[Pages run 39176047705](https://github.com/ArindamChatterjee007/kolkata-puja-guide/actions/runs/39176047705)
+succeeded at `2026-10-18T23:20:11Z`. Its sharing checks ran from
+`23:30:27.271Z` through `23:39:13.739Z`; focused layout checks ended at
+`23:42:12.644Z`. Cleanup resumed on 19 October as described below.
 
 ## Use And Privacy
 
@@ -23,7 +45,8 @@ Public entry: https://arindamchatterjee007.github.io/kolkata-puja-guide/photos.h
 4. Add photos in your own folder. Open another member's folder to view previews
    or download the unchanged original with its original filename.
 5. Contributors can delete their own photos. The creator can remove photos,
-   revoke members, rotate the invite, and delete the album.
+   rotate the invite, and delete the album. Member revocation is supported by
+   the backend API but is not exposed as a control in this frontend.
 
 Display names are labels, not verified identities. Anyone holding a live invite
 can join. Rotation prevents new joins with the old link but retains existing
@@ -70,13 +93,68 @@ only the generated static artifact, with no backend SQL or Edge source.
 
 ## Live Acceptance
 
-Pending: deployed-entry and main-menu checks; two fresh anonymous contributors
-with the same display name; original upload/finalization and cross-member
-download byte/hash/filename equality; separate previews; outsider and delete
-controls; mobile Bengali/dark and desktop layout; viewer/back/offline states;
-private-response cache boundaries; and cleanup restricted to this run's
-synthetic album and identities. No real user photos or other albums are used.
+| Scope | Result | Evidence |
+| --- | --- | --- |
+| Initial public entry and planner menu | PASS | HTTP 200, exact HTML hash, working Trip albums link, no automatic Auth request, no planner JS or road worker in the photo entry. |
+| Same-name contributors | PASS | Two fresh anonymous users named Photo QA received distinct IDs, folder suffixes and ownership. Invite inspection created no identity; joining replaced the fragment route. |
+| Uploads and previews | PASS | Three valid synthetic JPEGs finalized server-side. Separate previews rendered; records, byte counts and SHA-256 matched the generated originals. |
+| Cross-member originals | PASS | Actual browser downloads in both directions retained exact bytes, SHA-256 and ASCII/Bengali filenames. Two different originals with the same filename did not overwrite each other. |
+| Viewer and controls | PASS | Full-resolution originals decoded, Escape retained the folder, member upload/delete controls were absent in the other person's folder, and creator controls were present. |
+| Offline and invalid inputs | PASS | A queued upload was cancelled before reservation/PUT; reconciliation returned ready. Duplicate bytes, a 43 MB file and SVG produced no new upload request. |
+| Private access and transport | PASS, initial checks | Signed-out outsider UI/API access was denied. Invite capabilities did not appear in request URLs/referrers; original responses had attachment/UTF-8 filename and no-store headers. |
+| Service-worker boundary | PASS | One cache held 127 public entries and zero private API, Auth, Storage or original entries. |
+| Desktop and phone layout | PASS after QA-selector correction | 1440 px desktop and 390/320 px Bengali/dark layouts fit without horizontal overflow or covered control centers. Three screenshots were reviewed. Viewer pixels, arrows, Escape and own-delete control passed. |
+| Album summary after upload | FAIL observed, fix published, regression UNVERIFIED | A screenshot showed two folder photos but a stale zero-photo album summary. The final source reloads authoritative album detail after upload and deletion. No additional identity/upload was authorized to retest it. |
+| Final signed-out artifact checks | PASS | Nine HTML/JS/CSS files matched final artifact hashes and MIME types; page, create-dialog fields and planner link worked at 390 px with zero Auth requests and page errors. Live health was ready with uploads enabled. |
+
+The main trace retains 49 passing assertions and three failed records: one
+incorrect button-role selector, followed later by a cleanup-denial assertion
+and its enclosing phase failure. The toolbar uses radio roles. The corrected,
+focused layout pass has 16 passing assertions and zero failures. These counts
+are not a single clean suite and are not added to the earlier 53 backend checks.
+
+The three cross-member download checks used these synthetic sizes:
+
+| Sample | Original bytes | Separate preview bytes | Original SHA-256 matched |
+| --- | ---: | ---: | --- |
+| Creator JPEG | 568,748 | 41,157 | Yes |
+| Member JPEG with Bengali filename | 568,749 | 40,548 | Yes |
+| Member JPEG with repeated ASCII filename | 568,865 | 41,091 | Yes |
+
+No real user photos, workspace photo files, other albums, or provider datasets
+were used. The additional layout pass used two small generated JPEGs and the
+third, final authorized anonymous identity. No invite, member JWT, cookie,
+private object URL, service key or user-data identifier is in this record.
+
+## Cleanup And Limits
+
+The layout album's two photos and four objects were deleted through the UI at
+`2026-10-18T23:42:10.261Z`; its one anonymous user was deleted and absence
+verified at `23:42:12.644Z`. The sharing album's three photos and six objects
+were deleted through the creator UI at `2026-10-19T07:08:27.957Z`; the album
+card disappeared. Total: two QA albums, five originals and five previews removed.
+
+The sharing cleanup's next access check did not return the expected 403/404
+pair. Its final trace records one request without Auth after the long session
+pause; a fresh member-page reload showed lost-session/access-denied and zero
+photo or folder cards. The cleanup assertion stopped before the two original
+anonymous Auth identities were deleted. Those two data-free QA identities
+remain; do not claim all QA users were removed. No broad Auth listing, global
+database-empty assertion, rate-counter wipe or other-user cleanup was performed.
+Charged download usage was not reset. Both QA browsers/controllers are closed.
+
+Physical iPhone/Android behavior and native download UX were not tested. The
+fresh frontend originals were JPEGs; other formats and 32 MB byte-integrity
+coverage retain the separately dated backend evidence. Cancellation was before
+network transfer, not an uncertain in-flight lease. The production backend was
+not disabled to test unconfigured/read-only states, quotas were not exhausted,
+and member revocation/invite rotation were not exercised through this UI.
+
+The final counter refresh passed the authorized packaging build and public
+signed-out checks only. Full post-upload acceptance remains limited by the
+explicit three-identity cap. No extra identity, paid upgrade, migration replay
+or backend redeployment was performed.
 
 The existing office board and its older application receipts are unchanged;
-they do not certify this feature. Source/artifact/run IDs and exact live results
-will be recorded here after the deployed frontend is checked.
+they do not certify this feature. Local redacted evidence remains in the ignored
+`test-results/live-photos-release/` directory, not in either published branch.
